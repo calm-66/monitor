@@ -179,12 +179,12 @@ export async function GET(request: NextRequest) {
     const stats: StatsResponse = {
       totalViews: totalViewsResult._count.id,
       uniqueVisitors: uniqueVisitorsResult.length,
-      viewsByCountry: viewsByCountryResult.map(item => ({
-        country: item.country,
+      viewsByCountry: viewsByCountryResult.map((item: { country: string | null; _count: { id: number } }) => ({
+        country: item.country || 'Unknown',
         count: item._count.id
       })),
       viewsByDay,
-      topPages: topPagesResult.map(item => ({
+      topPages: topPagesResult.map((item: { pageUrl: string | null; _count: { id: number } }) => ({
         page: item.pageUrl || 'Unknown',
         count: item._count.id
       })),
