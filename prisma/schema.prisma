@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("MONITOR_DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 // 项目表 - 用于多租户隔离
