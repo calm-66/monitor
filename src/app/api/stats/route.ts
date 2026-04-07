@@ -169,10 +169,10 @@ export async function GET(request: NextRequest) {
     });
     
     // 汇总 IP 限制统计
-    const totalRequests = ipLimitStats.reduce((sum, stat) => sum + stat.totalRequests, 0);
-    const successfulResolves = ipLimitStats.reduce((sum, stat) => sum + stat.successfulResolves, 0);
-    const rateLimitedCount = ipLimitStats.reduce((sum, stat) => sum + stat.rateLimitedCount, 0);
-    const failedCount = ipLimitStats.reduce((sum, stat) => sum + stat.failedCount, 0);
+    const totalRequests = ipLimitStats.reduce((sum: number, stat: { totalRequests: number }) => sum + stat.totalRequests, 0);
+    const successfulResolves = ipLimitStats.reduce((sum: number, stat: { successfulResolves: number }) => sum + stat.successfulResolves, 0);
+    const rateLimitedCount = ipLimitStats.reduce((sum: number, stat: { rateLimitedCount: number }) => sum + stat.rateLimitedCount, 0);
+    const failedCount = ipLimitStats.reduce((sum: number, stat: { failedCount: number }) => sum + stat.failedCount, 0);
     const rateLimitedRatio = totalRequests > 0 ? rateLimitedCount / totalRequests : 0;
     
     // 构建响应数据
