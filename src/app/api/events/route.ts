@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       os: deviceInfo.os || null,
       screenWidth: event.screenWidth || null,
       screenHeight: event.screenHeight || null,
-      metadata: event.metadata || null,
+      metadata: event.metadata || undefined,
     }));
     
     // 批量插入事件
