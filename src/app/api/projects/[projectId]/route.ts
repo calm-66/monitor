@@ -33,6 +33,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         description: true,
         apiKey: true,
         domain: true,
+        statsApiUrl: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
