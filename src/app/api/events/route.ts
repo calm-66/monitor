@@ -43,7 +43,15 @@ export async function POST(request: NextRequest) {
     const apiKey = request.headers.get('X-API-Key');
     const projectId = request.headers.get('X-Project-ID');
     
+    console.log('[API /events] Request headers:', {
+      'X-API-Key': apiKey ? '***' + apiKey.slice(-8) : 'missing',
+      'X-Project-ID': projectId || 'missing',
+      'Content-Type': request.headers.get('Content-Type'),
+      'Origin': request.headers.get('Origin'),
+    });
+    
     if (!apiKey) {
+      console.log('[API /events] Missing API Key');
       return NextResponse.json(
         { success: false, error: 'Missing X-API-Key header' },
         { status: 401, headers: corsHeaders }
@@ -51,6 +59,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!projectId) {
+      console.log('[API /events] Missing Project ID');
       return NextResponse.json(
         { success: false, error: 'Missing X-Project-ID header' },
         { status: 401, headers: corsHeaders }
@@ -58,6 +67,7 @@ export async function POST(request: NextRequest) {
     }
     
     // 验证项目和 API Key
+    console.log('[API /events] Looking up project:', projectId);
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
@@ -67,11 +77,14 @@ export async function POST(request: NextRequest) {
     });
     
     if (!project) {
+      console.log('[API /events] Project not found or inactive:', projectId);
       return NextResponse.json(
         { success: false, error: 'Invalid API Key or Project ID' },
         { status: 401, headers: corsHeaders }
       );
     }
+    
+    console.log('[API /events] Project validated:', project.id);
     
     // 解析请求体
     const body = await request.json();
