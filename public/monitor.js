@@ -22,7 +22,7 @@
   const config = {
     projectId: null,
     apiKey: null,
-    endpoint: '/api/events',
+    endpoint: 'https://monitor-git-dev-calm-66s-projects.vercel.app/api/events',
     batchSize: 10,      // 批量大小
     flushInterval: 60000, // 1 分钟刷新
     maxRetries: 3       // 最大重试次数
