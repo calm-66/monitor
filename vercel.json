@@ -1,0 +1,26 @@
+{
+  "headers": [
+    {
+      "source": "/monitor.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "src": "/monitor.js",
+      "dest": "/monitor.js"
+    }
+  ],
+  "protection": {
+      "enable": true,
+      "excludePaths": [
+        "/monitor.js",
+        "/api/*"
+      ]
+    }
+}
