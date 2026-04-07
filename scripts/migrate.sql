@@ -12,6 +12,7 @@ CREATE TABLE "Project" (
     "description" TEXT,
     "apiKey" TEXT NOT NULL,
     "domain" TEXT,
+    "statsApiUrl" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,

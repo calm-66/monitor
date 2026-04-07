@@ -17,6 +17,7 @@ model Project {
   description String?   // 项目描述
   apiKey      String    @unique // API Key (用于 SDK 认证)
   domain      String?   // 项目域名 (可选)
+  statsApiUrl String?   // 外部统计 API 地址（用于获取注册用户数等）
   isActive    Boolean   @default(true) // 是否启用
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

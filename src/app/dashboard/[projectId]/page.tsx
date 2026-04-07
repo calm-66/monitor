@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { StatsResponse, IpLimitStats } from '@/types/monitor';
+import { StatsResponse, IpLimitStats, Project } from '@/types/monitor';
 import {
   LineChart,
   Line,
@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [authError, setAuthError] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [projectInfo, setProjectInfo] = useState<Project | null>(null);
 
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
@@ -47,13 +48,39 @@ export default function DashboardPage() {
       const response = await fetch(`/api/projects/${projectId}`);
       const data = await response.json();
       if (data.success && data.data.project) {
-        setProjectName(data.data.project.name);
-        setApiKey(data.data.project.apiKey);
+        const project = data.data.project;
+        setProjectName(project.name);
+        setApiKey(project.apiKey);
+        setProjectInfo(project);
       }
     } catch (err) {
       console.error('Failed to load project info:', err);
     }
   }, [projectId]);
+
+  // 获取外部用户统计
+  const loadExternalUserStats = useCallback(async () => {
+    if (!projectInfo?.statsApiUrl) return null;
+    
+    try {
+      const response = await fetch(projectInfo.statsApiUrl, {
+        headers: {
+          'X-API-Key': apiKey // 可选的认证
+        }
+      });
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      if (data.success) {
+        return data.data;
+      }
+      return null;
+    } catch (err) {
+      console.error('Failed to load external user stats:', err);
+      return null; // API 调用失败不影响其他功能
+    }
+  }, [projectInfo, apiKey]);
 
   // 加载统计数据
   const loadStats = useCallback(async () => {
@@ -102,6 +129,23 @@ export default function DashboardPage() {
       loadStats();
     }
   }, [apiKey, loadStats]);
+
+  // 加载外部用户统计
+  useEffect(() => {
+    const fetchExternalStats = async () => {
+      if (!projectInfo?.statsApiUrl || !apiKey) return;
+      
+      const externalStats = await loadExternalUserStats();
+      if (externalStats) {
+        setStats(prev => {
+          if (!prev) return null;
+          return { ...prev, externalUserStats: externalStats };
+        });
+      }
+    };
+    
+    fetchExternalStats();
+  }, [projectInfo, apiKey, loadExternalUserStats]);
 
   // 处理认证
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
@@ -257,7 +301,7 @@ export default function DashboardPage() {
         {/* 统计卡片 */}
         {stats && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
               {/* 总浏览数 */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-sm font-medium text-gray-500">Total Views</h3>
@@ -293,6 +337,27 @@ export default function DashboardPage() {
                   <p className="text-xs text-orange-600 mt-1">
                     Rate limited: {stats.ipResolveStats.rateLimitedCount} requests
                   </p>
+                )}
+              </div>
+
+              {/* 注册用户数（外部 API） */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {stats.externalUserStats?.totalUsers ?? '-'}
+                </p>
+                {stats.externalUserStats && (
+                  <div className="mt-2 text-xs text-gray-500 space-y-1">
+                    {stats.externalUserStats.newUsersToday !== undefined && (
+                      <p>Today: +{stats.externalUserStats.newUsersToday}</p>
+                    )}
+                    {stats.externalUserStats.newUsersThisWeek !== undefined && (
+                      <p>This Week: +{stats.externalUserStats.newUsersThisWeek}</p>
+                    )}
+                    {stats.externalUserStats.newUsersThisMonth !== undefined && (
+                      <p>This Month: +{stats.externalUserStats.newUsersThisMonth}</p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

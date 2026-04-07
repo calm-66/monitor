@@ -1,3 +1,14 @@
+// 外部用户统计 API 响应
+export interface ExternalUserStats {
+  success: boolean;
+  data: {
+    totalUsers: number;        // 总注册用户数
+    newUsersToday?: number;    // 今日新增用户（可选）
+    newUsersThisWeek?: number; // 本周新增用户（可选）
+    newUsersThisMonth?: number;// 本月新增用户（可选）
+  };
+}
+
 // 项目配置
 export interface Project {
   id: string;
@@ -5,6 +16,7 @@ export interface Project {
   description?: string | null;
   apiKey: string;
   domain?: string | null;
+  statsApiUrl?: string | null; // 外部统计 API 地址
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -56,6 +68,13 @@ export interface StatsResponse {
     rateLimitedCount: number;
     failedCount: number;
     rateLimitedRatio: number; // 被限流比例
+  };
+  // 外部用户统计（可选）
+  externalUserStats?: {
+    totalUsers: number;
+    newUsersToday?: number;
+    newUsersThisWeek?: number;
+    newUsersThisMonth?: number;
   };
 }
 
