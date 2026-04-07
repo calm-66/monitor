@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
     
     // 按日期分组（需要手动处理，因为 Prisma 不支持 DATE_TRUNC）
     const viewsByDayMap = new Map<string, number>();
-    viewsByDayResult.forEach(item => {
+    viewsByDayResult.forEach((item: { createdAt: Date; _count: { id: number } }) => {
       const dateKey = item.createdAt.toISOString().split('T')[0];
       viewsByDayMap.set(dateKey, (viewsByDayMap.get(dateKey) || 0) + item._count.id);
     });
