@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 项目表 - 用于多租户隔离
+model Project {
+  id          String    @id @default(uuid())
+  name        String    @unique // 项目名称（如 'usonly'）
+  description String?   // 项目描述
+  apiKey      String    @unique // API Key (用于 SDK 认证)
+  domain      String?   // 项目域名 (可选)
+  isActive    Boolean   @default(true) // 是否启用
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  events      Event[]
+}
+
+// 事件表 - 记录所有访问事件
+model Event {
+  id        String   @id @default(cuid())
+  projectId String   // 所属项目 ID
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // 事件基础信息
+  eventType String   // 事件类型：pageview/click/custom
+  eventName String?  // 事件名称（可选）
+  sessionId String?  // 会话 ID（可选，用于后续扩展）
+
+  // 页面信息
+  pageUrl    String? // 页面 URL
+  pageTitle  String? // 页面标题
+  referrer   String? // 来源页面
+
+  // 用户信息（匿名）
+  userId    String? // 匿名用户 ID（客户端生成）
+  ipAddress String? // IP 地址（用于地理位置解析）
+
+  // 地理位置信息
+  country   String?  // 国家
+  region    String?  // 省份/州
+  city      String?  // 城市
+  latitude  Float?   // 纬度
+  longitude Float?   // 经度
+
+  // 设备信息
+  userAgent  String? // User-Agent
+  deviceType String? // 设备类型：desktop/mobile/tablet
+  browser    String? // 浏览器名称
+  os         String? // 操作系统
+
+  // 屏幕信息
+  screenWidth  Int? // 屏幕宽度
+  screenHeight Int? // 屏幕高度
+
+  // 额外元数据
+  metadata Json? // 额外数据（JSON 格式）
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt]) // 按项目和时间查询
+  @@index([projectId, eventType]) // 按项目和类型查询
+  @@index([country]) // 按地区统计
+}
+
+// IP 解析限制追踪表 - 用于统计超出限制的情况
+model IpLimitTracker {
+  id               String @id @default(cuid())
+  projectId        String
+  project          Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  date             String // 日期字符串 YYYY-MM-DD
+  totalRequests    Int    @default(0) // 总请求数
+  successfulResolves Int    @default(0) // 成功解析数
+  rateLimitedCount Int    @default(0) // 被限流次数
+  failedCount      Int    @default(0) // 失败次数
+
+  @@unique([projectId, date]) // 每天一条记录
+}
