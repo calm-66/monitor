@@ -6,28 +6,30 @@ Monitor Platform 是一个全栈用户行为监控平台，用于监控 UsOnly �
 
 ## 功能特性
 
-### 1. 数据收集
+### 1. 数据收集 (Client-side Tracking)
 - **页面浏览追踪** (Pageview Tracking): 自动记录用户访问的页面 URL、标题、来源
 - **自定义事件追踪** (Custom Event Tracking): 支持追踪任意自定义事件
 - **点击事件追踪** (Click Tracking): 追踪特定元素的点击行为
-- **批量上报** (Batch Reporting): 支持批量事件上报，减少网络请求
+- **批量上报** (Batch Reporting): 支持批量事件上报（默认 10 条或 60 秒）
 - **重试机制** (Retry Mechanism): 指数退避重试（1s, 2s, 4s），最多 3 次
 
 ### 2. 数据处理
-- **IP 地理位置解析**: 使用 ip-api.com 服务解析用户 IP 的地理位置
-- **User-Agent 解析**: 解析设备类型、浏览器、操作系统信息
+- **IP 地理位置解析**: 使用 ip-api.com 服务解析用户 IP 的地理位置（国家、省份、城市）
+- **User-Agent 解析**: 解析设备类型（desktop/mobile/tablet）、浏览器、操作系统信息
 - **限流处理**: 处理 ip-api.com 的 45 次/分钟限流，记录到 IpLimitTracker 表
 - **多租户支持**: 通过 Project + API Key 实现多项目隔离
 
-### 3. Dashboard 展示
-- **总浏览量** (Total Views)
-- **独立访客数** (Unique Visitors)
-- **平均浏览/访客比** (Avg Views/Visitor)
-- **IP 解析成功率** (IP Resolve Rate)
-- **每日浏览趋势图** (Views by Day)
-- **国家分布饼图** (Views by Country)
-- **热门页面列表** (Top Pages)
-- **IP 解析统计** (IP Resolution Stats)
+### 3. Server-side Integration（服务端集成）
+- **外部 API 集成**: 通过配置 statsApiUrl 从业务系统获取统计数据
+- **自动刷新**: 每 5 分钟自动调用外部 API 刷新数据
+- **支持数据**: 注册用户数、每日登录用户数等业务指标
+
+### 4. Dashboard 展示
+- **Registered Users**: 总注册用户数 + 今日/本周/本月新增
+- **Daily Visitors (UV)**: 每日独立访客数
+- **Daily Active Users**: 每日登录用户数
+- **Daily Visitors (Last 30 Days)**: 30 天访问趋势柱状图
+- **Daily Active Users (Last 30 Days)**: 30 天登录趋势柱状图
 
 ## 技术架构
 
@@ -57,17 +59,19 @@ model Project {
   name        String   @unique
   description String?
   apiKey      String   @unique
+  domain      String?
+  statsApiUrl String?   // 外部统计 API 地址
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   events      Event[]
-  ipTrackers  IpLimitTracker[]
+  ipLimitTrackers IpLimitTracker[]
 }
 
 model Event {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   projectId   String
-  eventType   String   @default("pageview")
+  eventType   String   // pageview/click/custom
   eventName   String?
   sessionId   String?
   pageUrl     String?
@@ -88,18 +92,18 @@ model Event {
   screenHeight Int?
   metadata    Json?
   createdAt   DateTime @default(now())
-  project     Project  @relation(fields: [projectId], references: [id])
 }
 
 model IpLimitTracker {
-  id                 String   @id @default(uuid())
+  id                 String   @id @default(cuid())
   projectId          String
-  date               String
-  totalRequests      Int      @default(0)
-  successfulResolves Int      @default(0)
-  rateLimitedCount   Int      @default(0)
-  failedCount        Int      @default(0)
-  project            Project  @relation(fields: [projectId], references: [id])
+  date               String   // YYYY-MM-DD
+  totalRequests      Int
+  successfulResolves Int
+  rateLimitedCount   Int
+  failedCount        Int
+
+  @@unique([projectId, date])
 }
 ```
 
@@ -139,7 +143,7 @@ src/types/
 
 ### 1. CORS 跨域配置
 - API Routes 中添加跨域响应头
-- 支持 OPTIONS 预检请求
+- 支持 OPTIONS 预封请求
 - 允许自定义域名白名单
 
 ### 2. API 验证
@@ -148,12 +152,17 @@ src/types/
 
 ### 3. IP 限流处理
 - ip-api.com 限流时记录到 IpLimitTracker
-- Dashboard 显示警告但不阻止事件存储
+- 按日期（YYYY-MM-DD）统计限流情况
 
 ### 4. 批量上报 + 重试
 - 批量大小：10 条
 - 刷新间隔：60 秒
 - 指数退避重试：1s, 2s, 4s
+
+### 5. Server-side Integration
+- 每 5 分钟自动调用外部 API
+- 支持 Refresh 按钮手动刷新
+- 数据聚合显示在 Dashboard
 
 ## 环境变量
 
@@ -182,8 +191,9 @@ Monitor/
 │   │   │   ├── stats/
 │   │   │   └── health/
 │   │   ├── dashboard/
-│   │   │   └── projects/[id]/
-│   │   └── layout.tsx
+│   │   │   └── [projectId]/
+│   │   ├── layout.tsx
+│   │   └── page.tsx
 │   ├── lib/
 │   │   ├── prisma.ts
 │   │   ├── geoip.ts
@@ -208,14 +218,23 @@ Monitor/
 ```html
 <script 
   src="https://monitor-git-dev-calm-66s-projects.vercel.app/monitor.js"
-  data-project-id="28cc0e0a-aa4e-4421-b1d9-e311e34d2eed"
-  data-api-key="mk_5Tms2UqLLBMDV24adDeCDRlpSK4CcHAO"
+  data-project-id="your-project-id"
+  data-api-key="your-api-key"
   data-endpoint="https://monitor-git-dev-calm-66s-projects.vercel.app/api/events"
   async
 ></script>
 ```
 
-### 2. 手动追踪事件
+### 2. 手动初始化
+```javascript
+Monitor.init({
+  projectId: 'your-project-id',
+  apiKey: 'your-api-key',
+  endpoint: 'https://your-domain.com/api/events'
+});
+```
+
+### 3. 手动追踪事件
 ```javascript
 Monitor.trackEvent('button_click', { button: 'signup' });
 Monitor.trackPageview({ customData: 'value' });
@@ -228,31 +247,18 @@ Monitor.flush(); // 手动刷新
 - 前端脚本加载正常
 - 数据上报成功
 - Dashboard 显示统计数据
-- IP 地理位置解析正常（100% 解析率）
-
-## 未来优化方向
-
-- [ ] 添加实时数据更新（WebSocket 或 SSE）
-- [ ] 更多事件类型（滚动、表单提交等）
-- [ ] 会话追踪（Session Tracking）
-- [ ] 漏斗分析（Funnel Analysis）
-- [ ] 自定义日期范围
-- [ ] 导出 CSV 功能
+- IP 地理位置解析正常
+- Server-side Integration 正常
 
 ---
 
 ## 数据获取方式
 
-Monitor 平台支持两种数据获取方式，分别适用于不同的使用场景：
+Monitor 平台支持两种数据获取方式：
 
 ### 1. Client-side Tracking（客户端追踪）
 
-**定义**：通过在用户浏览器中运行的 JavaScript 脚本（monitor.js）收集用户行为数据，并通过 HTTP Beacon（fetch/XHR）发送到 Monitor 后端。
-
-**别名**：
-- Frontend Instrumentation（前端埋点）
-- JavaScript Tracking（JS 追踪）
-- Beacon-based Collection（信标采集）
+**定义**：通过在用户浏览器中运行的 JavaScript 脚本（monitor.js）收集用户行为数据。
 
 **数据流向**：
 ```
@@ -264,109 +270,37 @@ Monitor 平台支持两种数据获取方式，分别适用于不同的使用场
 - 点击事件（Click Event）
 - 自定义事件（Custom Event）
 - 设备信息（User-Agent、屏幕尺寸）
-- 匿名用戶 ID（localStorage 生成）
-- IP 地址（服务端从请求头提取）
-- 地理位置（服务端调用 ip-api.com 解析）
+- 匿名用户 ID（localStorage 生成）
 
 **适用场景**：
-- 用户行为分析（浏览、点击、停留时间）
+- 用户行为分析（浏览、点击）
 - 流量统计（PV、UV）
 - 来源分析（Referrer、地理位置）
-- 会话追踪
-
-**业界参考**：
-- Google Analytics (gtag.js)
-- Mixpanel
-- Amplitude
-- Hotjar
-
----
 
 ### 2. Server-side Integration（服务端集成）
 
-**定义**：Monitor 后端通过调用外部 API（statsApiUrl）或接收 Webhook，从业务服务器获取业务数据。
-
-**别名**：
-- API-based Integration（API 集成）
-- Backend Data Sync（后端数据同步）
-- External Data Source（外部数据源）
+**定义**：Monitor 后端通过调用外部 API（statsApiUrl）从业务服务器获取业务数据。
 
 **数据流向**：
 ```
 Monitor Dashboard → statsApiUrl → 业务系统 API → 业务数据库
-                        ↓
-                   Monitor Database (聚合显示)
 ```
 
 **收集的数据类型**：
 - 注册用户数（Registered Users）
-- 业务指标（发帖数、评论数、订单数等）
-- 自定义业务统计
+- 每日登录用户数（Daily Active Users）
+- 其他业务指标
 
 **适用场景**：
 - 业务数据存储在服务端数据库中
 - 需要聚合统计的业务指标
-- 与用户行为无关的业务数据
-
-**业界参考**：
-- Segment（数据集成平台）
-- Fivetran（数据管道）
-- Stitch Data
-
----
 
 ### 3. 对比总结
 
 | 维度 | Client-side Tracking | Server-side Integration |
 |------|---------------------|------------------------|
 | **数据来源** | 浏览器/客户端 | 业务数据库 |
-| **数据类型** | 行为数据（浏览、点击） | 业务数据（用户、订单） |
+| **数据类型** | 行为数据 | 业务数据 |
 | **数据流向** | Push（客户端推送） | Pull（Monitor 拉取） |
-| **实时性** | 近实时 | 取决于调用频率 |
-| **可靠性** | 受广告拦截器影响 | 更可靠 |
-| **数据量** | 大（每次交互） | 小（聚合数据） |
+| **实时性** | 近实时 | 取决于调用频率（5 分钟） |
 | **实现复杂度** | 低（嵌入脚本） | 中（API 开发） |
-
----
-
-### 4. 架构模式
-
-```
-                    ┌─────────────────┐
-                    │   Monitor       │
-                    │   Dashboard     │
-                    └────────────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-              ▼              ▼              ▼
-     ┌────────────────┐     │     ┌────────────────┐
-     │  Client-side   │     │     │  Server-side   │
-     │  Tracking      │     │     │  Integration   │
-     │  (monitor.js)  │     │     │  (External API)│
-     └────────────────     │     └────────────────
-              │              │              │
-              │              │              │
-              ▼              ▼              ▼
-     ┌─────────────────────────────────────────┐
-     │           Monitor Database              │
-     │  (Event 表 + 外部数据聚合)               │
-     └─────────────────────────────────────────┘
-```
-
-这种架构结合了两种数据获取方式的优势：
-- **Client-side Tracking**：捕捉实时用户行为，无需修改业务代码
-- **Server-side Integration**：集成业务数据，提供更全面的分析视角
-
----
-
-### 5. 使用建议
-
-| 需求 | 推荐方案 |
-|------|---------|
-| 页面浏览量统计 | Client-side Tracking |
-| 用户点击热图 | Client-side Tracking |
-| 停留时间分析 | Client-side Tracking |
-| 注册用户数显示 | Server-side Integration |
-| 发帖/评论统计 | Server-side Integration |
-| 订单转化追踪 | 两者结合（行为 + 业务） |
