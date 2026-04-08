@@ -130,7 +130,7 @@ export default function DashboardPage() {
     }
   }, [apiKey, loadStats]);
 
-  // 加载外部用户统计
+  // 加载外部用户统计（初始加载 + 每 5 分钟自动刷新）
   useEffect(() => {
     const fetchExternalStats = async () => {
       if (!projectInfo?.statsApiUrl || !apiKey) return;
@@ -145,6 +145,16 @@ export default function DashboardPage() {
     };
     
     fetchExternalStats();
+    
+    // 设置每 5 分钟（300000ms）自动刷新
+    const intervalId = setInterval(fetchExternalStats, 300000);
+    
+    // 清理定时器
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [projectInfo, apiKey, loadExternalUserStats]);
 
   // 处理认证
@@ -168,6 +178,14 @@ export default function DashboardPage() {
   // 刷新数据
   const handleRefresh = () => {
     loadStats();
+    // 同时刷新外部用户统计
+    if (projectInfo?.statsApiUrl && apiKey) {
+      loadExternalUserStats().then(externalStats => {
+        if (externalStats) {
+          setStats(prev => prev ? { ...prev, externalUserStats: externalStats } : null);
+        }
+      });
+    }
   };
 
   // 如果没有通过认证，显示登录表单
