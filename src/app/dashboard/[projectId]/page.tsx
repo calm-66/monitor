@@ -169,12 +169,6 @@ export default function DashboardPage() {
     window.location.reload();
   };
 
-  // 复制 API Key
-  const copyApiKey = () => {
-    navigator.clipboard.writeText(apiKey);
-    alert('API Key copied to clipboard');
-  };
-
   // 刷新数据
   const handleRefresh = () => {
     loadStats();
@@ -253,54 +247,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* API Key 显示 */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm text-gray-500">API Key:</span>
-              <code className="ml-2 bg-gray-100 px-2 py-1 rounded text-sm text-gray-700">
-                {apiKey}
-              </code>
-            </div>
-            <button
-              onClick={copyApiKey}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-            >
-              Copy
-            </button>
-          </div>
-        </div>
-
-        {/* 日期范围选择 */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="flex items-center space-x-4">
-            <div>
-              <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date
-              </label>
-              <input
-                type="date"
-                id="startDate"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              />
-            </div>
-            <div>
-              <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-                End Date
-              </label>
-              <input
-                type="date"
-                id="endDate"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* 错误信息 */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -316,9 +262,10 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 统计卡片 */}
+        {/* 统计卡片和图表 */}
         {stats && (
           <>
+            {/* 统计卡片 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {/* 注册用户数（外部 API） */}
               <div className="bg-white rounded-lg shadow-md p-6">
@@ -366,8 +313,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* 图表行 1 - 每日访问用户数和每日登录用户数 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* 图表 - 每日访问用户数和每日登录用户数 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* 每日访问用户数（UV）柱状图 */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Visitors (Last 30 Days)</h3>
@@ -398,164 +345,8 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               </div>
             </div>
-
-            {/* 图表行 2 - 保留原来的 Views by Day 和 Country */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* 按日趋势 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Views by Day</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={stats.viewsByDay}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="count"
-                      stroke="#3B82F6"
-                      strokeWidth={2}
-                      name="Views"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* 按国家分布 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Views by Country</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={stats.viewsByCountry}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ country, percent }) =>
-                        `${country || 'Unknown'} (${(percent * 100).toFixed(0)}%)`
-                      }
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="count"
-                    >
-                      {stats.viewsByCountry.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* 图表行 2 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* 热门页面 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Top Pages</h3>
-                <div className="space-y-3">
-                  {stats.topPages.map((page, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
-                          {index + 1}
-                        </span>
-                        <span className="text-gray-700 truncate max-w-md">{page.page}</span>
-                      </div>
-                      <span className="text-gray-500 font-medium">{page.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* IP 解析统计 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">IP Resolution Stats</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Total Requests</span>
-                    <span className="font-medium text-gray-900">
-                      {stats.ipResolveStats.totalRequests}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Successful Resolves</span>
-                    <span className="font-medium text-green-600">
-                      {stats.ipResolveStats.successfulResolves}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Rate Limited</span>
-                    <span className="font-medium text-orange-600">
-                      {stats.ipResolveStats.rateLimitedCount}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Failed</span>
-                    <span className="font-medium text-red-600">
-                      {stats.ipResolveStats.failedCount}
-                    </span>
-                  </div>
-                  <div className="pt-4 border-t">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Success Rate</span>
-                      <span className="font-medium text-gray-900">
-                        {stats.ipResolveStats.totalRequests > 0
-                          ? ((stats.ipResolveStats.successfulResolves / stats.ipResolveStats.totalRequests) * 100).toFixed(1)
-                          : '100'}
-                        %
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                {stats.ipResolveStats.rateLimitedCount > 0 && (
-                  <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded">
-                    <p className="text-sm text-orange-800">
-                      <strong>Warning:</strong> Some IP resolution requests were rate limited by ip-api.com.
-                      This is expected behavior with the free tier (45 requests/minute limit).
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 按国家条形图 */}
-            {stats.viewsByCountry.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Views by Country (Bar Chart)</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.viewsByCountry}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="country" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="count" fill="#3B82F6" name="Views" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
           </>
         )}
-
-        {/* 集成代码示例 */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Integration Code</h3>
-          <p className="text-gray-600 mb-4">
-            Add this script to your website to start tracking:
-          </p>
-          <pre className="bg-gray-100 p-4 rounded-md overflow-x-auto text-sm text-gray-800">
-{`<script src="/monitor.js"></script>
-<script>
-  Monitor.init({
-    projectId: '${projectId}',
-    apiKey: '${apiKey}',
-    endpoint: '/api/events'
-  });
-</script>`}
-          </pre>
-        </div>
       </div>
     </main>
   );
