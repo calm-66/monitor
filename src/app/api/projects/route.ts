@@ -74,12 +74,21 @@ export async function POST(request: NextRequest) {
     // 生成 API Key
     const apiKey = generateApiKey();
     
+    // 如果提供了 domain，自动填充 statsApiUrl
+    let statsApiUrl: string | null = null;
+    if (domain) {
+      // 确保 domain 不以斜杠结尾，然后拼接 /api/monitor/stats
+      const baseDomain = domain.endsWith('/') ? domain.slice(0, -1) : domain;
+      statsApiUrl = `${baseDomain}/api/monitor/stats`;
+    }
+    
     // 创建项目
     const project = await prisma.project.create({
       data: {
         name,
         description: description || null,
         domain: domain || null,
+        statsApiUrl,
         apiKey,
         isActive: true,
       },
