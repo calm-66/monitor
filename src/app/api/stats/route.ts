@@ -6,7 +6,7 @@ import { StatsResponse } from '@/types/monitor';
 /**
  * GET /api/stats
  * 获取统计数据
- * 查询参数：projectId, startDate, endDate
+ * 查询参数：projectId, startDate, endDate, environment
  */
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get('projectId');
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
+    const environment = searchParams.get('environment') || 'all'; // 'all', 'preview', 'main'
     
     // 验证必填参数
     if (!projectId) {
@@ -21,6 +22,20 @@ export async function GET(request: NextRequest) {
         { success: false, error: 'Missing projectId parameter' },
         { status: 400 }
       );
+    }
+
+    // 构建环境筛选条件
+    const environmentFilter: any = {};
+    if (environment !== 'all') {
+      // 根据 environment 参数筛选数据
+      // preview: usonly-preview.vercel.app
+      // main: usonly.com (或其他生产域名)
+      if (environment === 'preview') {
+        environmentFilter.pageUrl = { contains: 'usonly-preview.vercel.app' };
+      } else if (environment === 'main') {
+        // 排除 preview 域名，其余视为主环境
+        environmentFilter.pageUrl = { not: { contains: 'usonly-preview.vercel.app' } };
+      }
     }
     
     // 验证 API Key
@@ -61,7 +76,8 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: start,
           lte: end
-        }
+        },
+        ...environmentFilter
       }
     });
     
@@ -73,7 +89,8 @@ export async function GET(request: NextRequest) {
           gte: start,
           lte: end
         },
-        userId: { not: null }
+        userId: { not: null },
+        ...environmentFilter
       },
       select: {
         userId: true
@@ -92,7 +109,8 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: start,
           lte: end
-        }
+        },
+        ...environmentFilter
       },
       orderBy: {
         _count: {
@@ -113,7 +131,8 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: start,
           lte: end
-        }
+        },
+        ...environmentFilter
       },
       orderBy: {
         createdAt: 'asc'
@@ -144,7 +163,8 @@ export async function GET(request: NextRequest) {
           gte: start,
           lte: end
         },
-        pageUrl: { not: null }
+        pageUrl: { not: null },
+        ...environmentFilter
       },
       orderBy: {
         _count: {

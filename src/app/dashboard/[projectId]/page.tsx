@@ -34,6 +34,9 @@ export default function DashboardPage() {
   const [apiKey, setApiKey] = useState('');
   const [projectInfo, setProjectInfo] = useState<Project | null>(null);
 
+  // 环境筛选
+  const [environment, setEnvironment] = useState<string>('all'); // 'all', 'preview', 'main'
+
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -89,7 +92,7 @@ export default function DashboardPage() {
 
     try {
       const response = await fetch(
-        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}`,
+        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&environment=${environment}`,
         {
           headers: {
             'X-API-Key': apiKey,
@@ -182,6 +185,12 @@ export default function DashboardPage() {
     }
   };
 
+  // 获取环境列表（从统计数据中提取）
+  const getEnvironmentsFromStats = () => {
+    if (!stats?.environments) return [];
+    return stats.environments;
+  };
+
   // 如果没有通过认证，显示登录表单
   if (authError) {
     return (
@@ -231,6 +240,17 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center space-x-4">
+            {/* 环境筛选器 */}
+            <select
+              value={environment}
+              onChange={(e) => setEnvironment(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
+            >
+              <option value="all">All Environments</option>
+              <option value="preview">Preview</option>
+              <option value="main">Production (Main)</option>
+            </select>
+
             <button
               onClick={handleRefresh}
               disabled={loading}

@@ -75,6 +75,9 @@
    * 追踪页面浏览
    */
   function trackPageview(customData) {
+    // 分离 metadata 字段和其他字段
+    var metadata = customData || {};
+    
     const payload = {
       eventType: 'pageview',
       pageUrl: window.location.href,
@@ -85,7 +88,7 @@
       screenHeight: window.screen.height,
       userId: getOrCreateUserId(),
       timestamp: Date.now(),
-      ...customData
+      metadata: metadata
     };
 
     queueEvent(payload);
