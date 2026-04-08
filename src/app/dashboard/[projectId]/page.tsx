@@ -354,9 +354,13 @@ export default function DashboardPage() {
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-sm font-medium text-gray-500">Daily Active Users</h3>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.externalUserStats?.dailyActiveUsers?.length > 0 
-                    ? stats.externalUserStats.dailyActiveUsers[stats.externalUserStats.dailyActiveUsers.length - 1]?.count 
-                    : '-'}
+                  {(() => {
+                    const dailyActiveUsers = stats.externalUserStats?.dailyActiveUsers;
+                    if (dailyActiveUsers && dailyActiveUsers.length > 0) {
+                      return dailyActiveUsers[dailyActiveUsers.length - 1].count;
+                    }
+                    return '-';
+                  })()}
                 </p>
                 <p className="mt-2 text-xs text-gray-500">Latest day count</p>
               </div>
@@ -383,7 +387,7 @@ export default function DashboardPage() {
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users (Last 30 Days)</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.externalUserStats?.dailyActiveUsers || []}>
+                  <BarChart data={(stats.externalUserStats?.dailyActiveUsers || []) as any}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
