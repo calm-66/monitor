@@ -319,45 +319,7 @@ export default function DashboardPage() {
         {/* 统计卡片 */}
         {stats && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-              {/* 总浏览数 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Total Views</h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalViews}</p>
-              </div>
-
-              {/* 独立访客 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Unique Visitors</h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.uniqueVisitors}</p>
-              </div>
-
-              {/* 平均每次访问页面数 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Avg Views/Visitor</h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.uniqueVisitors > 0
-                    ? (stats.totalViews / stats.uniqueVisitors).toFixed(1)
-                    : '0'}
-                </p>
-              </div>
-
-              {/* IP 解析成功率 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">IP Resolve Rate</h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.ipResolveStats.totalRequests > 0
-                    ? ((1 - stats.ipResolveStats.rateLimitedRatio) * 100).toFixed(1)
-                    : '100'}
-                  %
-                </p>
-                {stats.ipResolveStats.rateLimitedCount > 0 && (
-                  <p className="text-xs text-orange-600 mt-1">
-                    Rate limited: {stats.ipResolveStats.rateLimitedCount} requests
-                  </p>
-                )}
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {/* 注册用户数（外部 API） */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
@@ -378,9 +340,62 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+
+              {/* 每日访问用户数（UV） */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-sm font-medium text-gray-500">Daily Visitors (UV)</h3>
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {stats.viewsByDay?.length > 0 ? stats.viewsByDay[stats.viewsByDay.length - 1]?.count : '-'}
+                </p>
+                <p className="mt-2 text-xs text-gray-500">Latest day count</p>
+              </div>
+
+              {/* 每日登录用户数 */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-sm font-medium text-gray-500">Daily Active Users</h3>
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {stats.externalUserStats?.dailyActiveUsers?.length > 0 
+                    ? stats.externalUserStats.dailyActiveUsers[stats.externalUserStats.dailyActiveUsers.length - 1]?.count 
+                    : '-'}
+                </p>
+                <p className="mt-2 text-xs text-gray-500">Latest day count</p>
+              </div>
             </div>
 
-            {/* 图表行 1 */}
+            {/* 图表行 1 - 每日访问用户数和每日登录用户数 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* 每日访问用户数（UV）柱状图 */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Visitors (Last 30 Days)</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.viewsByDay}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" fill="#3B82F6" name="Visitors" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* 每日登录用户数柱状图 */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users (Last 30 Days)</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.externalUserStats?.dailyActiveUsers || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" fill="#10B981" name="Active Users" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* 图表行 2 - 保留原来的 Views by Day 和 Country */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* 按日趋势 */}
               <div className="bg-white rounded-lg shadow-md p-6">
