@@ -238,3 +238,135 @@ Monitor.flush(); // 手动刷新
 - [ ] 漏斗分析（Funnel Analysis）
 - [ ] 自定义日期范围
 - [ ] 导出 CSV 功能
+
+---
+
+## 数据获取方式
+
+Monitor 平台支持两种数据获取方式，分别适用于不同的使用场景：
+
+### 1. Client-side Tracking（客户端追踪）
+
+**定义**：通过在用户浏览器中运行的 JavaScript 脚本（monitor.js）收集用户行为数据，并通过 HTTP Beacon（fetch/XHR）发送到 Monitor 后端。
+
+**别名**：
+- Frontend Instrumentation（前端埋点）
+- JavaScript Tracking（JS 追踪）
+- Beacon-based Collection（信标采集）
+
+**数据流向**：
+```
+用户浏览器 → monitor.js → /api/events → Monitor Database
+```
+
+**收集的数据类型**：
+- 页面浏览（Pageview）
+- 点击事件（Click Event）
+- 自定义事件（Custom Event）
+- 设备信息（User-Agent、屏幕尺寸）
+- 匿名用戶 ID（localStorage 生成）
+- IP 地址（服务端从请求头提取）
+- 地理位置（服务端调用 ip-api.com 解析）
+
+**适用场景**：
+- 用户行为分析（浏览、点击、停留时间）
+- 流量统计（PV、UV）
+- 来源分析（Referrer、地理位置）
+- 会话追踪
+
+**业界参考**：
+- Google Analytics (gtag.js)
+- Mixpanel
+- Amplitude
+- Hotjar
+
+---
+
+### 2. Server-side Integration（服务端集成）
+
+**定义**：Monitor 后端通过调用外部 API（statsApiUrl）或接收 Webhook，从业务服务器获取业务数据。
+
+**别名**：
+- API-based Integration（API 集成）
+- Backend Data Sync（后端数据同步）
+- External Data Source（外部数据源）
+
+**数据流向**：
+```
+Monitor Dashboard → statsApiUrl → 业务系统 API → 业务数据库
+                        ↓
+                   Monitor Database (聚合显示)
+```
+
+**收集的数据类型**：
+- 注册用户数（Registered Users）
+- 业务指标（发帖数、评论数、订单数等）
+- 自定义业务统计
+
+**适用场景**：
+- 业务数据存储在服务端数据库中
+- 需要聚合统计的业务指标
+- 与用户行为无关的业务数据
+
+**业界参考**：
+- Segment（数据集成平台）
+- Fivetran（数据管道）
+- Stitch Data
+
+---
+
+### 3. 对比总结
+
+| 维度 | Client-side Tracking | Server-side Integration |
+|------|---------------------|------------------------|
+| **数据来源** | 浏览器/客户端 | 业务数据库 |
+| **数据类型** | 行为数据（浏览、点击） | 业务数据（用户、订单） |
+| **数据流向** | Push（客户端推送） | Pull（Monitor 拉取） |
+| **实时性** | 近实时 | 取决于调用频率 |
+| **可靠性** | 受广告拦截器影响 | 更可靠 |
+| **数据量** | 大（每次交互） | 小（聚合数据） |
+| **实现复杂度** | 低（嵌入脚本） | 中（API 开发） |
+
+---
+
+### 4. 架构模式
+
+```
+                    ┌─────────────────┐
+                    │   Monitor       │
+                    │   Dashboard     │
+                    └────────────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+              ▼              ▼              ▼
+     ┌────────────────┐     │     ┌────────────────┐
+     │  Client-side   │     │     │  Server-side   │
+     │  Tracking      │     │     │  Integration   │
+     │  (monitor.js)  │     │     │  (External API)│
+     └────────────────     │     └────────────────
+              │              │              │
+              │              │              │
+              ▼              ▼              ▼
+     ┌─────────────────────────────────────────┐
+     │           Monitor Database              │
+     │  (Event 表 + 外部数据聚合)               │
+     └─────────────────────────────────────────┘
+```
+
+这种架构结合了两种数据获取方式的优势：
+- **Client-side Tracking**：捕捉实时用户行为，无需修改业务代码
+- **Server-side Integration**：集成业务数据，提供更全面的分析视角
+
+---
+
+### 5. 使用建议
+
+| 需求 | 推荐方案 |
+|------|---------|
+| 页面浏览量统计 | Client-side Tracking |
+| 用户点击热图 | Client-side Tracking |
+| 停留时间分析 | Client-side Tracking |
+| 注册用户数显示 | Server-side Integration |
+| 发帖/评论统计 | Server-side Integration |
+| 订单转化追踪 | 两者结合（行为 + 业务） |
