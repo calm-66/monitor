@@ -1,3 +1,9 @@
+// 每日活跃用户数据
+export interface DailyActiveUser {
+  date: string;
+  count: number;
+}
+
 // 外部用户统计 API 响应
 export interface ExternalUserStats {
   success: boolean;
@@ -6,6 +12,7 @@ export interface ExternalUserStats {
     newUsersToday?: number;    // 今日新增用户（可选）
     newUsersThisWeek?: number; // 本周新增用户（可选）
     newUsersThisMonth?: number;// 本月新增用户（可选）
+    dailyActiveUsers?: DailyActiveUser[]; // 每日登录用户数（30 天）
   };
 }
 
@@ -75,6 +82,7 @@ export interface StatsResponse {
     newUsersToday?: number;
     newUsersThisWeek?: number;
     newUsersThisMonth?: number;
+    dailyActiveUsers?: DailyActiveUser[]; // 每日登录用户数（30 天）
   };
 }
 
