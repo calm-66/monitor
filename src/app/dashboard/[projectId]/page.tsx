@@ -37,6 +37,15 @@ export default function DashboardPage() {
   // 环境筛选
   const [environment, setEnvironment] = useState<string>('preview'); // 'preview', 'main'
 
+  // 当环境变化时，清空当前数据并重新加载
+  useEffect(() => {
+    if (apiKey) {
+      // 清空当前数据，显示加载状态
+      setStats(null);
+      loadStats();
+    }
+  }, [environment]);
+
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -102,7 +111,8 @@ export default function DashboardPage() {
 
       if (response.status === 401) {
         setAuthError(true);
-        return;
+        setLoading(false);
+        return null;
       }
 
       const data = await response.json();
@@ -110,14 +120,18 @@ export default function DashboardPage() {
       if (data.success) {
         setStats(data.data);
         setAuthError(false);
+        setLoading(false);
+        return data.data;
       } else {
         setError(data.error || 'Failed to load stats');
+        setLoading(false);
+        return null;
       }
     } catch (err) {
       console.error('Failed to load stats:', err);
       setError('Failed to load stats');
-    } finally {
       setLoading(false);
+      return null;
     }
   }, [projectId, startDate, endDate, apiKey]);
 
@@ -173,15 +187,50 @@ export default function DashboardPage() {
   };
 
   // 刷新数据
-  const handleRefresh = () => {
-    loadStats();
-    // 同时刷新外部用户统计
-    if (projectInfo?.statsApiUrl && apiKey) {
-      loadExternalUserStats().then(externalStats => {
-        if (externalStats) {
-          setStats(prev => prev ? { ...prev, externalUserStats: externalStats } : null);
+  const handleRefresh = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      // 同时加载统计数据和外部用户统计
+      const response = await fetch(
+        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&environment=${environment}`,
+        {
+          headers: {
+            'X-API-Key': apiKey,
+          },
         }
-      });
+      );
+
+      if (response.status === 401) {
+        setAuthError(true);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // 加载外部用户统计并合并
+        let externalStats = null;
+        if (projectInfo?.statsApiUrl && apiKey) {
+          externalStats = await loadExternalUserStats();
+        }
+        
+        const mergedStats = externalStats 
+          ? { ...data.data, externalUserStats: externalStats }
+          : data.data;
+        
+        setStats(mergedStats);
+        setAuthError(false);
+      } else {
+        setError(data.error || 'Failed to load stats');
+      }
+    } catch (err) {
+      console.error('Failed to load stats:', err);
+      setError('Failed to load stats');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -328,9 +377,10 @@ export default function DashboardPage() {
 
             {/* 图表 - 每日访问用户数和每日登录用户数 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 每日访问用户数（UV）柱状图 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Visitors (Last 30 Days)</h3>
+            {/* 每日访问用户数（UV）柱状图 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Visitors (Last 30 Days)</h3>
+              {stats.viewsByDay && stats.viewsByDay.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stats.viewsByDay}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -341,13 +391,19 @@ export default function DashboardPage() {
                     <Bar dataKey="count" fill="#3B82F6" name="Visitors" />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+                  No data available for this period
+                </div>
+              )}
+            </div>
 
-              {/* 每日登录用户数柱状图 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users (Last 30 Days)</h3>
+            {/* 每日登录用户数柱状图 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users (Last 30 Days)</h3>
+              {stats.externalUserStats?.dailyActiveUsers && stats.externalUserStats.dailyActiveUsers.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={(stats.externalUserStats?.dailyActiveUsers || []) as any}>
+                  <BarChart data={stats.externalUserStats.dailyActiveUsers}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
@@ -356,7 +412,12 @@ export default function DashboardPage() {
                     <Bar dataKey="count" fill="#10B981" name="Active Users" />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+                  No data available for this period
+                </div>
+              )}
+            </div>
             </div>
           </>
         )}
