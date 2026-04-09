@@ -17,7 +17,8 @@ export async function GET() {
         name: true,
         description: true,
         apiKey: true,
-        domain: true,
+        previewDomain: true,
+        productionDomain: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -41,7 +42,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, domain } = body;
+    const { name, description, previewDomain, productionDomain } = body;
     
     // 验证必填字段
     if (!name || typeof name !== 'string') {
@@ -74,12 +75,12 @@ export async function POST(request: NextRequest) {
     // 生成 API Key
     const apiKey = generateApiKey();
     
-    // 如果提供了 domain，自动填充 statsApiUrl
+    // 如果提供了 productionDomain，自动填充 statsApiUrl
     let statsApiUrl: string | null = null;
-    if (domain) {
-      // 确保 domain 不以斜杠结尾，然后拼接 /api/monitor/stats
-      const baseDomain = domain.endsWith('/') ? domain.slice(0, -1) : domain;
-      statsApiUrl = `${baseDomain}/api/monitor/stats`;
+    if (productionDomain) {
+      // 使用 productionDomain 构建 statsApiUrl
+      const baseDomain = productionDomain.endsWith('/') ? productionDomain.slice(0, -1) : productionDomain;
+      statsApiUrl = `https://${baseDomain}/api/monitor/stats`;
     }
     
     // 创建项目
@@ -87,7 +88,8 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         description: description || null,
-        domain: domain || null,
+        previewDomain: previewDomain || null,
+        productionDomain: productionDomain || null,
         statsApiUrl,
         apiKey,
         isActive: true,
@@ -97,7 +99,8 @@ export async function POST(request: NextRequest) {
         name: true,
         description: true,
         apiKey: true,
-        domain: true,
+        previewDomain: true,
+        productionDomain: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,

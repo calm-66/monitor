@@ -12,7 +12,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
-  const [newProjectDomain, setNewProjectDomain] = useState('');
+  const [newProjectPreviewDomain, setNewProjectPreviewDomain] = useState('');
+  const [newProjectProductionDomain, setNewProjectProductionDomain] = useState('');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -55,7 +56,8 @@ export default function Home() {
         body: JSON.stringify({
           name: newProjectName.trim(),
           description: newProjectDescription.trim() || undefined,
-          domain: newProjectDomain.trim() || undefined,
+          previewDomain: newProjectPreviewDomain.trim() || undefined,
+          productionDomain: newProjectProductionDomain.trim() || undefined,
         }),
       });
 
@@ -65,7 +67,8 @@ export default function Home() {
         setSuccessMessage(`Project "${data.data.project.name}" created! API Key: ${data.data.project.apiKey}`);
         setNewProjectName('');
         setNewProjectDescription('');
-        setNewProjectDomain('');
+        setNewProjectPreviewDomain('');
+        setNewProjectProductionDomain('');
         loadProjects();
       } else {
         setError(data.error || 'Failed to create project');
@@ -146,15 +149,28 @@ export default function Home() {
               />
             </div>
             <div>
-              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
-                Domain
+              <label htmlFor="previewDomain" className="block text-sm font-medium text-gray-700 mb-1">
+                Preview Domain
               </label>
               <input
                 type="text"
-                id="domain"
-                value={newProjectDomain}
-                onChange={(e) => setNewProjectDomain(e.target.value)}
-                placeholder="https://example.com"
+                id="previewDomain"
+                value={newProjectPreviewDomain}
+                onChange={(e) => setNewProjectPreviewDomain(e.target.value)}
+                placeholder="usonly-preview.vercel.app"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              />
+            </div>
+            <div>
+              <label htmlFor="productionDomain" className="block text-sm font-medium text-gray-700 mb-1">
+                Production Domain
+              </label>
+              <input
+                type="text"
+                id="productionDomain"
+                value={newProjectProductionDomain}
+                onChange={(e) => setNewProjectProductionDomain(e.target.value)}
+                placeholder="usonly.com"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
@@ -199,9 +215,14 @@ export default function Home() {
                       {project.description && (
                         <p className="text-gray-500 text-sm mt-1">{project.description}</p>
                       )}
-                      {project.domain && (
-                        <p className="text-gray-500 text-sm">Domain: {project.domain}</p>
-                      )}
+                      <div className="text-gray-500 text-sm mt-1 space-y-1">
+                        {project.previewDomain && (
+                          <p>Preview: {project.previewDomain}</p>
+                        )}
+                        {project.productionDomain && (
+                          <p>Production: {project.productionDomain}</p>
+                        )}
+                      </div>
                       <div className="mt-3 flex items-center space-x-4">
                         <div className="flex items-center space-x-2">
                           <span className="text-sm text-gray-500">API Key:</span>
