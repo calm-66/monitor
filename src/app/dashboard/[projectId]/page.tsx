@@ -49,6 +49,14 @@ export default function DashboardPage() {
     return '';
   }, [projectInfo, environment]);
 
+  // 日期范围 - 必须在 useEffect 之前声明
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+
   // 当环境变化时，清空当前数据并重新加载所有数据
   useEffect(() => {
     const loadAllData = async () => {
@@ -105,14 +113,6 @@ export default function DashboardPage() {
     
     loadAllData();
   }, [environment, projectInfo, apiKey, projectId, startDate, endDate, getCurrentDomain, loadExternalUserStats]);
-
-  // 日期范围
-  const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // 加载项目信息
   const loadProjectInfo = useCallback(async () => {
