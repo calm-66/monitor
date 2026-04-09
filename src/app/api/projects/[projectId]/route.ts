@@ -34,7 +34,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         apiKey: true,
         previewDomain: true,
         productionDomain: true,
-        statsApiUrl: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
