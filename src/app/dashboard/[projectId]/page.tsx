@@ -185,12 +185,6 @@ export default function DashboardPage() {
     }
   };
 
-  // 获取环境列表（从统计数据中提取）
-  const getEnvironmentsFromStats = () => {
-    if (!stats?.environments) return [];
-    return stats.environments;
-  };
-
   // 如果没有通过认证，显示登录表单
   if (authError) {
     return (

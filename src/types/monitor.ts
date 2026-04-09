@@ -84,6 +84,8 @@ export interface StatsResponse {
     newUsersThisMonth?: number;
     dailyActiveUsers?: DailyActiveUser[]; // 每日登录用户数（30 天）
   };
+  // 环境列表（可选）
+  environments?: string[];
 }
 
 // IP 解析限制追踪
