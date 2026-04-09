@@ -35,7 +35,7 @@ export default function DashboardPage() {
   const [projectInfo, setProjectInfo] = useState<Project | null>(null);
 
   // 环境筛选
-  const [environment, setEnvironment] = useState<string>('all'); // 'all', 'preview', 'main'
+  const [environment, setEnvironment] = useState<string>('preview'); // 'preview', 'main'
 
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
@@ -240,7 +240,6 @@ export default function DashboardPage() {
               onChange={(e) => setEnvironment(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
             >
-              <option value="all">All Environments</option>
               <option value="preview">Preview</option>
               <option value="main">Production (Main)</option>
             </select>
