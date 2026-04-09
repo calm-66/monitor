@@ -6,7 +6,10 @@ import { StatsResponse } from '@/types/monitor';
 /**
  * GET /api/stats
  * 获取统计数据
- * 查询参数：projectId, startDate, endDate, environment
+ * 查询参数：projectId, startDate, endDate, domain
+ * 
+ * domain 参数：直接传入域名（如 'usonly-preview.vercel.app' 或 'usonly.com'）
+ * 前端根据用户选择的环境（preview/production）传入对应的域名
  */
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +17,7 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get('projectId');
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
-    const environment = searchParams.get('environment') || 'all'; // 'all', 'preview', 'main'
+    const domain = searchParams.get('domain') || ''; // 直接传入域名
     
     // 验证必填参数
     if (!projectId) {
@@ -24,19 +27,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 构建环境筛选条件
+    // 构建域名筛选条件
     const environmentFilter: any = {};
-    if (environment !== 'all') {
-      // 根据 environment 参数筛选数据
-      // preview: 包含 -preview 或 vercel.app 的 URL
-      // main: 不包含 preview 的 URL（生产域名）
-      if (environment === 'preview') {
-        // Vercel preview URL 格式：xxx-preview.vercel.app 或 xxx-git-xxx-preview.vercel.app
-        environmentFilter.pageUrl = { contains: '-preview' };
-      } else if (environment === 'main') {
-        // 排除 preview 域名，其余视为主环境
-        environmentFilter.pageUrl = { not: { contains: '-preview' } };
-      }
+    if (domain) {
+      // 直接使用传入的域名进行筛选
+      environmentFilter.pageUrl = { contains: domain };
     }
     
     // 验证 API Key

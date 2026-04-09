@@ -22,7 +22,9 @@ export interface Project {
   name: string;
   description?: string | null;
   apiKey: string;
-  domain?: string | null;
+  previewDomain?: string | null;      // Preview 环境域名
+  productionDomain?: string | null;   // Production 环境域名
+  domain?: string | null;             // 已废弃，保留向后兼容
   statsApiUrl?: string | null; // 外部统计 API 地址
   isActive: boolean;
   createdAt: Date;

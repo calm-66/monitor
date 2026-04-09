@@ -34,17 +34,29 @@ export default function DashboardPage() {
   const [apiKey, setApiKey] = useState('');
   const [projectInfo, setProjectInfo] = useState<Project | null>(null);
 
-  // 环境筛选
-  const [environment, setEnvironment] = useState<string>('preview'); // 'preview', 'main'
+  // 环境筛选 - 现在使用域名而不是环境代码
+  // 'preview' | 'production' 映射到 projectInfo.previewDomain | projectInfo.productionDomain
+  const [environment, setEnvironment] = useState<string>('preview');
+
+  // 获取当前环境对应的域名
+  const getCurrentDomain = useCallback(() => {
+    if (!projectInfo) return '';
+    if (environment === 'preview') {
+      return projectInfo.previewDomain || '';
+    } else if (environment === 'production') {
+      return projectInfo.productionDomain || '';
+    }
+    return '';
+  }, [projectInfo, environment]);
 
   // 当环境变化时，清空当前数据并重新加载
   useEffect(() => {
-    if (apiKey) {
+    if (apiKey && projectInfo) {
       // 清空当前数据，显示加载状态
       setStats(null);
       loadStats();
     }
-  }, [environment]);
+  }, [environment, projectInfo]);
 
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
@@ -100,8 +112,9 @@ export default function DashboardPage() {
     setError('');
 
     try {
+      const domain = getCurrentDomain();
       const response = await fetch(
-        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&environment=${environment}`,
+        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&domain=${encodeURIComponent(domain)}`,
         {
           headers: {
             'X-API-Key': apiKey,
@@ -133,7 +146,7 @@ export default function DashboardPage() {
       setLoading(false);
       return null;
     }
-  }, [projectId, startDate, endDate, apiKey]);
+  }, [projectId, startDate, endDate, apiKey, getCurrentDomain]);
 
   // 初始化
   useEffect(() => {
@@ -192,9 +205,10 @@ export default function DashboardPage() {
     setError('');
     
     try {
+      const domain = getCurrentDomain();
       // 同时加载统计数据和外部用户统计
       const response = await fetch(
-        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&environment=${environment}`,
+        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&domain=${encodeURIComponent(domain)}`,
         {
           headers: {
             'X-API-Key': apiKey,
@@ -290,7 +304,7 @@ export default function DashboardPage() {
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
             >
               <option value="preview">Preview</option>
-              <option value="main">Production (Main)</option>
+              <option value="production">Production</option>
             </select>
 
             <button
