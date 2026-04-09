@@ -38,6 +38,14 @@ export default function DashboardPage() {
   // 'preview' | 'production' 映射到 projectInfo.previewDomain | projectInfo.productionDomain
   const [environment, setEnvironment] = useState<string>('preview');
 
+  // 日期范围
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+
   // 获取当前环境对应的域名
   const getCurrentDomain = useCallback(() => {
     if (!projectInfo) return '';
@@ -48,71 +56,6 @@ export default function DashboardPage() {
     }
     return '';
   }, [projectInfo, environment]);
-
-  // 日期范围 - 必须在 useEffect 之前声明
-  const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-
-  // 当环境变化时，清空当前数据并重新加载所有数据
-  useEffect(() => {
-    const loadAllData = async () => {
-      if (apiKey && projectInfo) {
-        // 清空当前数据，显示加载状态
-        setStats(null);
-        setLoading(true);
-        setError('');
-        
-        try {
-          const domain = getCurrentDomain();
-          // 同时加载统计数据和外部用户统计
-          const response = await fetch(
-            `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&domain=${encodeURIComponent(domain)}`,
-            {
-              headers: {
-                'X-API-Key': apiKey,
-              },
-            }
-          );
-
-          if (response.status === 401) {
-            setAuthError(true);
-            setLoading(false);
-            return;
-          }
-
-          const data = await response.json();
-
-          if (data.success) {
-            // 加载外部用户统计并合并
-            let externalStats = null;
-            if (projectInfo && apiKey) {
-              externalStats = await loadExternalUserStats();
-            }
-            
-            const mergedStats = externalStats 
-              ? { ...data.data, externalUserStats: externalStats }
-              : data.data;
-            
-            setStats(mergedStats);
-            setAuthError(false);
-          } else {
-            setError(data.error || 'Failed to load stats');
-          }
-        } catch (err) {
-          console.error('Failed to load stats:', err);
-          setError('Failed to load stats');
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    
-    loadAllData();
-  }, [environment, projectInfo, apiKey, projectId, startDate, endDate, getCurrentDomain, loadExternalUserStats]);
 
   // 加载项目信息
   const loadProjectInfo = useCallback(async () => {
@@ -247,6 +190,63 @@ export default function DashboardPage() {
       }
     };
   }, [projectInfo, apiKey, loadExternalUserStats]);
+
+  // 当环境变化时，清空当前数据并重新加载所有数据
+  useEffect(() => {
+    const loadAllData = async () => {
+      if (apiKey && projectInfo) {
+        // 清空当前数据，显示加载状态
+        setStats(null);
+        setLoading(true);
+        setError('');
+        
+        try {
+          const domain = getCurrentDomain();
+          // 同时加载统计数据和外部用户统计
+          const response = await fetch(
+            `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&domain=${encodeURIComponent(domain)}`,
+            {
+              headers: {
+                'X-API-Key': apiKey,
+              },
+            }
+          );
+
+          if (response.status === 401) {
+            setAuthError(true);
+            setLoading(false);
+            return;
+          }
+
+          const data = await response.json();
+
+          if (data.success) {
+            // 加载外部用户统计并合并
+            let externalStats = null;
+            if (projectInfo && apiKey) {
+              externalStats = await loadExternalUserStats();
+            }
+            
+            const mergedStats = externalStats 
+              ? { ...data.data, externalUserStats: externalStats }
+              : data.data;
+            
+            setStats(mergedStats);
+            setAuthError(false);
+          } else {
+            setError(data.error || 'Failed to load stats');
+          }
+        } catch (err) {
+          console.error('Failed to load stats:', err);
+          setError('Failed to load stats');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadAllData();
+  }, [environment, projectInfo, apiKey, projectId, startDate, endDate, getCurrentDomain, loadExternalUserStats]);
 
   // 处理认证
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
