@@ -28,13 +28,14 @@ export async function GET(request: NextRequest) {
     const environmentFilter: any = {};
     if (environment !== 'all') {
       // 根据 environment 参数筛选数据
-      // preview: usonly-preview.vercel.app
-      // main: usonly.com (或其他生产域名)
+      // preview: 包含 -preview 或 vercel.app 的 URL
+      // main: 不包含 preview 的 URL（生产域名）
       if (environment === 'preview') {
-        environmentFilter.pageUrl = { contains: 'usonly-preview.vercel.app' };
+        // Vercel preview URL 格式：xxx-preview.vercel.app 或 xxx-git-xxx-preview.vercel.app
+        environmentFilter.pageUrl = { contains: '-preview' };
       } else if (environment === 'main') {
         // 排除 preview 域名，其余视为主环境
-        environmentFilter.pageUrl = { not: { contains: 'usonly-preview.vercel.app' } };
+        environmentFilter.pageUrl = { not: { contains: '-preview' } };
       }
     }
     
