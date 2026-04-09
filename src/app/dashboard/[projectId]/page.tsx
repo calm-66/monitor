@@ -82,21 +82,27 @@ export default function DashboardPage() {
     }
   }, [projectId]);
 
-  // 获取外部用户统计 - 根据当前环境动态生成 statsApiUrl
+  // 获取外部用户统计 - 使用代理 API 避免 CORS 问题
   const loadExternalUserStats = useCallback(async () => {
     // 根据当前环境动态生成 statsApiUrl
     const currentDomain = getCurrentDomain();
     if (!currentDomain) return null;
     
-    // 移除可能存在的前缀（如 https:// 或 http://）
+    // 移除可能存在的前缀（如 https://或 http://）
     const domain = currentDomain.replace(/^https?:\/\//, '');
     const statsApiUrl = `https://${domain}/api/monitor/stats`;
     
     try {
-      const response = await fetch(statsApiUrl, {
+      // 使用服务器端代理 API 调用 UsOnly，避免 CORS 限制
+      const response = await fetch('/api/external-stats', {
+        method: 'POST',
         headers: {
-          'X-API-Key': apiKey // 可选的认证
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          statsApiUrl: statsApiUrl,
+          apiKey: apiKey
+        })
       });
       
       if (!response.ok) return null;
