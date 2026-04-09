@@ -49,14 +49,62 @@ export default function DashboardPage() {
     return '';
   }, [projectInfo, environment]);
 
-  // 当环境变化时，清空当前数据并重新加载
+  // 当环境变化时，清空当前数据并重新加载所有数据
   useEffect(() => {
-    if (apiKey && projectInfo) {
-      // 清空当前数据，显示加载状态
-      setStats(null);
-      loadStats();
-    }
-  }, [environment, projectInfo]);
+    const loadAllData = async () => {
+      if (apiKey && projectInfo) {
+        // 清空当前数据，显示加载状态
+        setStats(null);
+        setLoading(true);
+        setError('');
+        
+        try {
+          const domain = getCurrentDomain();
+          // 同时加载统计数据和外部用户统计
+          const response = await fetch(
+            `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&domain=${encodeURIComponent(domain)}`,
+            {
+              headers: {
+                'X-API-Key': apiKey,
+              },
+            }
+          );
+
+          if (response.status === 401) {
+            setAuthError(true);
+            setLoading(false);
+            return;
+          }
+
+          const data = await response.json();
+
+          if (data.success) {
+            // 加载外部用户统计并合并
+            let externalStats = null;
+            if (projectInfo && apiKey) {
+              externalStats = await loadExternalUserStats();
+            }
+            
+            const mergedStats = externalStats 
+              ? { ...data.data, externalUserStats: externalStats }
+              : data.data;
+            
+            setStats(mergedStats);
+            setAuthError(false);
+          } else {
+            setError(data.error || 'Failed to load stats');
+          }
+        } catch (err) {
+          console.error('Failed to load stats:', err);
+          setError('Failed to load stats');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadAllData();
+  }, [environment, projectInfo, apiKey, projectId, startDate, endDate, getCurrentDomain, loadExternalUserStats]);
 
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
