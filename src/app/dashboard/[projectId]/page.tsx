@@ -88,7 +88,9 @@ export default function DashboardPage() {
     const currentDomain = getCurrentDomain();
     if (!currentDomain) return null;
     
-    const statsApiUrl = `https://${currentDomain}/api/monitor/stats`;
+    // 移除可能存在的前缀（如 https:// 或 http://）
+    const domain = currentDomain.replace(/^https?:\/\//, '');
+    const statsApiUrl = `https://${domain}/api/monitor/stats`;
     
     try {
       const response = await fetch(statsApiUrl, {
