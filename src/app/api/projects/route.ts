@@ -75,22 +75,13 @@ export async function POST(request: NextRequest) {
     // 生成 API Key
     const apiKey = generateApiKey();
     
-    // 如果提供了 productionDomain，自动填充 statsApiUrl
-    let statsApiUrl: string | null = null;
-    if (productionDomain) {
-      // 使用 productionDomain 构建 statsApiUrl
-      const baseDomain = productionDomain.endsWith('/') ? productionDomain.slice(0, -1) : productionDomain;
-      statsApiUrl = `https://${baseDomain}/api/monitor/stats`;
-    }
-    
-    // 创建项目
+    // 创建项目（不再自动设置 statsApiUrl，前端根据环境动态生成）
     const project = await prisma.project.create({
       data: {
         name,
         description: description || null,
         previewDomain: previewDomain || null,
         productionDomain: productionDomain || null,
-        statsApiUrl,
         apiKey,
         isActive: true,
       },

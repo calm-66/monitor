@@ -24,7 +24,6 @@ export interface Project {
   apiKey: string;
   previewDomain?: string | null;      // Preview 环境域名
   productionDomain?: string | null;   // Production 环境域名
-  statsApiUrl?: string | null; // 外部统计 API 地址
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

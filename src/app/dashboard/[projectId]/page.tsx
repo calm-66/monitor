@@ -82,12 +82,16 @@ export default function DashboardPage() {
     }
   }, [projectId]);
 
-  // 获取外部用户统计
+  // 获取外部用户统计 - 根据当前环境动态生成 statsApiUrl
   const loadExternalUserStats = useCallback(async () => {
-    if (!projectInfo?.statsApiUrl) return null;
+    // 根据当前环境动态生成 statsApiUrl
+    const currentDomain = getCurrentDomain();
+    if (!currentDomain) return null;
+    
+    const statsApiUrl = `https://${currentDomain}/api/monitor/stats`;
     
     try {
-      const response = await fetch(projectInfo.statsApiUrl, {
+      const response = await fetch(statsApiUrl, {
         headers: {
           'X-API-Key': apiKey // 可选的认证
         }
@@ -104,7 +108,7 @@ export default function DashboardPage() {
       console.error('Failed to load external user stats:', err);
       return null; // API 调用失败不影响其他功能
     }
-  }, [projectInfo, apiKey]);
+  }, [projectInfo, apiKey, getCurrentDomain]);
 
   // 加载统计数据
   const loadStats = useCallback(async () => {
@@ -163,7 +167,8 @@ export default function DashboardPage() {
   // 加载外部用户统计（初始加载 + 每 5 分钟自动刷新）
   useEffect(() => {
     const fetchExternalStats = async () => {
-      if (!projectInfo?.statsApiUrl || !apiKey) return;
+      // 只要有 projectInfo 和 apiKey 就尝试加载
+      if (!projectInfo || !apiKey) return;
       
       const externalStats = await loadExternalUserStats();
       if (externalStats) {
@@ -227,7 +232,7 @@ export default function DashboardPage() {
       if (data.success) {
         // 加载外部用户统计并合并
         let externalStats = null;
-        if (projectInfo?.statsApiUrl && apiKey) {
+        if (projectInfo && apiKey) {
           externalStats = await loadExternalUserStats();
         }
         

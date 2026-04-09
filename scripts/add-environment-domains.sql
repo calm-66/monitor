@@ -12,6 +12,10 @@ ADD COLUMN "productionDomain" TEXT;
 ALTER TABLE "Project" 
 DROP COLUMN "domain";
 
+-- Step 4: Drop the statsApiUrl column (no longer needed, will be generated dynamically)
+ALTER TABLE "Project" 
+DROP COLUMN "statsApiUrl";
+
 -- Example update for usonly project (update with actual domain values)
 UPDATE "Project" 
 SET "previewDomain" = 'usonly-preview.vercel.app',
