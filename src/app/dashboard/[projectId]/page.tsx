@@ -471,6 +471,7 @@ export default function DashboardPage() {
                       dataKey="date" 
                       tickFormatter={formatShortDate}
                       ticks={getXAxisTicks(filterCurrentMonth(stats.viewsByDay))}
+                      interval="preserveStartEnd"
                     />
                     <YAxis allowDecimals={false} />
                     <Tooltip content={(props) => <CustomTooltip {...props} color="#3B82F6" />} />
@@ -496,6 +497,7 @@ export default function DashboardPage() {
                       dataKey="date" 
                       tickFormatter={formatShortDate}
                       ticks={getXAxisTicks(filterCurrentMonth(stats.uniqueVisitorsByDay))}
+                      interval="preserveStartEnd"
                     />
                     <YAxis allowDecimals={false} />
                     <Tooltip content={(props) => <CustomTooltip {...props} color="#10B981" />} />
@@ -521,6 +523,7 @@ export default function DashboardPage() {
                       dataKey="date" 
                       tickFormatter={formatShortDate}
                       ticks={getXAxisTicks(filterCurrentMonth(stats.externalUserStats.dailyActiveUsers))}
+                      interval="preserveStartEnd"
                     />
                     <YAxis allowDecimals={false} />
                     <Tooltip content={(props) => <CustomTooltip {...props} color="#8B5CF6" />} />
