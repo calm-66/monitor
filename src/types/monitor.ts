@@ -40,6 +40,7 @@ export interface EventPayload {
   userAgent?: string;
   screenWidth?: number;
   screenHeight?: number;
+  createdAt?: string; // ISO 格式的日期时间字符串（包含时区信息，由浏览器生成）
   metadata?: Record<string, any>;
 }
 

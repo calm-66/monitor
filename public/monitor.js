@@ -87,8 +87,8 @@
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
       userId: getOrCreateUserId(),
-      timestamp: Date.now(),
-      metadata: metadata
+      // 使用浏览器当地时间（ISO 格式，包含时区信息）
+      createdAt: new Date().toISOString()
     };
 
     queueEvent(payload);
@@ -106,7 +106,8 @@
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
       userId: getOrCreateUserId(),
-      timestamp: Date.now(),
+      // 使用浏览器当地时间（ISO 格式，包含时区信息）
+      createdAt: new Date().toISOString(),
       metadata: eventData || {}
     };
 
@@ -128,6 +129,13 @@
         });
       }
     });
+  }
+
+  /**
+   * 从 ISO 字符串解析日期（保持时区信息）
+   */
+  function parseDate(isoString) {
+    return new Date(isoString);
   }
 
   /**

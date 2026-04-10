@@ -64,7 +64,7 @@ model Event {
   // 额外元数据
   metadata Json? // 额外数据（JSON 格式）
 
-  createdAt DateTime @default(now())
+  createdAt DateTime // 事件创建时间（由客户端提供当地时间）
 
   @@index([projectId, createdAt]) // 按项目和时间查询
   @@index([projectId, eventType]) // 按项目和类型查询

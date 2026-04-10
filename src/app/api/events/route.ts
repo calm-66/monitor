@@ -118,30 +118,43 @@ export async function POST(request: NextRequest) {
     const firstEvent = events[0];
     const deviceInfo = parseUserAgent(firstEvent?.userAgent);
     
-    // 准备批量插入的数据（使用当前时间，由 formatAsBeijingDate 在读取时转换显示）
-    const eventsToCreate = events.map((event: EventPayload) => ({
-      projectId,
-      eventType: event.eventType || 'pageview',
-      eventName: event.eventName || null,
-      sessionId: event.sessionId || null,
-      pageUrl: event.pageUrl || null,
-      pageTitle: event.pageTitle || null,
-      referrer: event.referrer || null,
-      userId: event.userId || null,
-      ipAddress: clientIP || null,
-      country: geoLocation.country || null,
-      region: geoLocation.region || null,
-      city: geoLocation.city || null,
-      latitude: geoLocation.latitude || null,
-      longitude: geoLocation.longitude || null,
-      userAgent: event.userAgent || null,
-      deviceType: deviceInfo.deviceType || null,
-      browser: deviceInfo.browser || null,
-      os: deviceInfo.os || null,
-      screenWidth: event.screenWidth || null,
-      screenHeight: event.screenHeight || null,
-      metadata: event.metadata || undefined,
-    }));
+    // 准备批量插入的数据（使用前端发送的当地时间）
+    const eventsToCreate = events.map((event: EventPayload) => {
+      // 如果前端提供了 createdAt，使用它；否则使用服务器当前时间
+      let createdAt: Date;
+      if (event.createdAt) {
+        // 前端发送的是 ISO 字符串（包含时区信息），直接解析
+        createdAt = new Date(event.createdAt);
+      } else {
+        // 回退到服务器时间（UTC）
+        createdAt = new Date();
+      }
+      
+      return {
+        projectId,
+        eventType: event.eventType || 'pageview',
+        eventName: event.eventName || null,
+        sessionId: event.sessionId || null,
+        pageUrl: event.pageUrl || null,
+        pageTitle: event.pageTitle || null,
+        referrer: event.referrer || null,
+        userId: event.userId || null,
+        ipAddress: clientIP || null,
+        country: geoLocation.country || null,
+        region: geoLocation.region || null,
+        city: geoLocation.city || null,
+        latitude: geoLocation.latitude || null,
+        longitude: geoLocation.longitude || null,
+        userAgent: event.userAgent || null,
+        deviceType: deviceInfo.deviceType || null,
+        browser: deviceInfo.browser || null,
+        os: deviceInfo.os || null,
+        screenWidth: event.screenWidth || null,
+        screenHeight: event.screenHeight || null,
+        metadata: event.metadata || undefined,
+        createdAt,
+      };
+    });
     
     // 批量插入事件
     await prisma.event.createMany({
