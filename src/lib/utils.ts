@@ -72,11 +72,11 @@ export function parseDateRange(startDate?: string, endDate?: string): { start: D
  * @returns 北京时间格式的日期字符串 (YYYY-MM-DD)
  */
 export function formatAsBeijingDate(date: Date): string {
-  // 获取 UTC 时间戳
-  const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
-  // 添加北京时间偏移 (UTC+8)
-  const beijingOffset = 8 * 3600000; // 8 小时
-  const beijingTime = new Date(utcTime + beijingOffset);
-  // 格式化为 YYYY-MM-DD
-  return beijingTime.toISOString().split('T')[0];
+  // 使用 toLocaleDateString 指定时区转换为北京时间
+  return date.toLocaleDateString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).replace(/\//g, '-');
 }
