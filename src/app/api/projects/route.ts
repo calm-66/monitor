@@ -17,8 +17,7 @@ export async function GET() {
         name: true,
         description: true,
         apiKey: true,
-        previewDomain: true,
-        productionDomain: true,
+        domain: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -81,12 +80,11 @@ export async function POST(request: NextRequest) {
     const apiKey = generateApiKey();
     
     // 创建项目
-    // 使用 previewDomain 存储传入的 domain（保持向后兼容）
     const project = await prisma.project.create({
       data: {
         name,
         description: description || null,
-        previewDomain: domain || null,
+        domain: domain || null,
         apiKey,
         isActive: true,
       },
@@ -95,8 +93,7 @@ export async function POST(request: NextRequest) {
         name: true,
         description: true,
         apiKey: true,
-        previewDomain: true,
-        productionDomain: true,
+        domain: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,

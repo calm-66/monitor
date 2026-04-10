@@ -22,8 +22,7 @@ export interface Project {
   name: string;
   description?: string | null;
   apiKey: string;
-  previewDomain?: string | null;      // Preview 环境域名
-  productionDomain?: string | null;   // Production 环境域名
+  domain?: string | null;   // 项目域名（如 'usonly-preview.vercel.app' 或 'usonly.com'）
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

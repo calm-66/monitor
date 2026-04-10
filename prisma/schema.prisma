@@ -16,8 +16,7 @@ model Project {
   name        String    @unique // 项目名称（如 'usonly'）
   description String?   // 项目描述
   apiKey      String    @unique // API Key (用于 SDK 认证)
-  previewDomain     String?   // Preview 环境域名（如 'usonly-preview.vercel.app'）
-  productionDomain  String?   // Production 环境域名（如 'usonly.com'）
+  domain      String?   // 项目域名（如 'usonly-preview.vercel.app' 或 'usonly.com'）
   isActive    Boolean   @default(true) // 是否启用
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

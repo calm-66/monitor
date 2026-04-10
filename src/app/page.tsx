@@ -200,8 +200,8 @@ export default function Home() {
                         <p className="text-gray-500 text-sm mt-1">{project.description}</p>
                       )}
                       <div className="text-gray-500 text-sm mt-1">
-                        {project.previewDomain && (
-                          <p>Domain: {project.previewDomain}</p>
+                        {project.domain && (
+                          <p>Domain: {project.domain}</p>
                         )}
                       </div>
                       <div className="mt-3 flex items-center space-x-4">
