@@ -44,7 +44,7 @@ function getXAxisTicks(data: Array<{ date: string }>): string[] {
 }
 
 // 过滤出当前月份的数据
-function filterCurrentMonth(data: Array<{ date: string }>): Array<{ date: string; count: number }> {
+function filterCurrentMonth<T extends { date: string }>(data: T[]): T[] {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
