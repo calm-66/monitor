@@ -36,11 +36,21 @@ function formatShortDate(dateStr: string): string {
   return `${month}-${day}`;
 }
 
-// 获取 X 轴刻度间隔（每隔 7 天显示一个标签）
+// 获取 X 轴刻度间隔（确保显示第一天和最后一天，中间每隔 7 天显示一个标签）
 function getXAxisTicks(data: Array<{ date: string }>): string[] {
   if (data.length === 0) return [];
-  // 返回每隔 7 天的日期
-  return data.filter((_, index) => index % 7 === 0).map(item => item.date);
+  if (data.length === 1) return [data[0].date];
+  
+  const firstDate = data[0].date;
+  const lastDate = data[data.length - 1].date;
+  
+  // 获取中间每隔 7 天的日期
+  const middleDates = data
+    .filter((_, index) => index > 0 && index < data.length - 1 && index % 7 === 0)
+    .map(item => item.date);
+  
+  // 返回包含第一天、中间日期和最后一天的数组
+  return [firstDate, ...middleDates, lastDate];
 }
 
 // 过滤出当前月份的数据
