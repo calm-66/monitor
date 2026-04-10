@@ -246,7 +246,7 @@ export async function GET(request: NextRequest) {
     const uniqueVisitorsByDay = Array.from(uniqueVisitorsByDayMap.entries()).map(([date, userIdSet]) => ({
       date,
       count: userIdSet.size
-    }));
+    })).sort((a, b) => a.date.localeCompare(b.date)); // 按日期升序排序
     
     // 热门页面排行
     const topPagesResult = await prisma.event.groupBy({
