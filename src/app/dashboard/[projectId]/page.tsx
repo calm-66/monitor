@@ -34,10 +34,6 @@ export default function DashboardPage() {
   const [apiKey, setApiKey] = useState('');
   const [projectInfo, setProjectInfo] = useState<Project | null>(null);
 
-  // 环境筛选 - 现在使用域名而不是环境代码
-  // 'preview' | 'production' 映射到 projectInfo.previewDomain | projectInfo.productionDomain
-  const [environment, setEnvironment] = useState<string>('preview');
-
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -46,18 +42,8 @@ export default function DashboardPage() {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  // 获取当前环境对应的域名
-  const getCurrentDomain = useCallback(() => {
-    if (!projectInfo) return '';
-    if (environment === 'preview') {
-      return projectInfo.previewDomain || '';
-    } else if (environment === 'production') {
-      return projectInfo.productionDomain || '';
-    }
-    return '';
-  }, [projectInfo, environment]);
-
-  // 加载项目信息
+  // 日期范围结束
+  const endDateStr = endDate;
   const loadProjectInfo = useCallback(async () => {
     try {
       const response = await fetch(`/api/projects/${projectId}`);
@@ -75,14 +61,6 @@ export default function DashboardPage() {
 
   // 获取外部用户统计 - 使用代理 API 避免 CORS 问题
   const loadExternalUserStats = useCallback(async () => {
-    // 根据当前环境动态生成 statsApiUrl
-    const currentDomain = getCurrentDomain();
-    if (!currentDomain) return null;
-    
-    // 移除可能存在的前缀（如 https://或 http://）
-    const domain = currentDomain.replace(/^https?:\/\//, '');
-    const statsApiUrl = `https://${domain}/api/monitor/stats`;
-    
     try {
       // 使用服务器端代理 API 调用 UsOnly，避免 CORS 限制
       const response = await fetch('/api/external-stats', {
@@ -91,7 +69,6 @@ export default function DashboardPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          statsApiUrl: statsApiUrl,
           apiKey: apiKey
         })
       });
@@ -107,7 +84,7 @@ export default function DashboardPage() {
       console.error('Failed to load external user stats:', err);
       return null; // API 调用失败不影响其他功能
     }
-  }, [projectInfo, apiKey, getCurrentDomain]);
+  }, [apiKey]);
 
   // 加载统计数据
   const loadStats = useCallback(async () => {
@@ -115,9 +92,8 @@ export default function DashboardPage() {
     setError('');
 
     try {
-      const domain = getCurrentDomain();
       const response = await fetch(
-        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&domain=${encodeURIComponent(domain)}`,
+        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}`,
         {
           headers: {
             'X-API-Key': apiKey,
@@ -149,7 +125,7 @@ export default function DashboardPage() {
       setLoading(false);
       return null;
     }
-  }, [projectId, startDate, endDate, apiKey, getCurrentDomain]);
+  }, [projectId, startDate, endDate, apiKey]);
 
   // 初始化
   useEffect(() => {
@@ -191,63 +167,6 @@ export default function DashboardPage() {
     };
   }, [projectInfo, apiKey, loadExternalUserStats]);
 
-  // 当环境变化时，清空当前数据并重新加载所有数据
-  useEffect(() => {
-    const loadAllData = async () => {
-      if (apiKey && projectInfo) {
-        // 清空当前数据，显示加载状态
-        setStats(null);
-        setLoading(true);
-        setError('');
-        
-        try {
-          const domain = getCurrentDomain();
-          // 同时加载统计数据和外部用户统计
-          const response = await fetch(
-            `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&domain=${encodeURIComponent(domain)}`,
-            {
-              headers: {
-                'X-API-Key': apiKey,
-              },
-            }
-          );
-
-          if (response.status === 401) {
-            setAuthError(true);
-            setLoading(false);
-            return;
-          }
-
-          const data = await response.json();
-
-          if (data.success) {
-            // 加载外部用户统计并合并
-            let externalStats = null;
-            if (projectInfo && apiKey) {
-              externalStats = await loadExternalUserStats();
-            }
-            
-            const mergedStats = externalStats 
-              ? { ...data.data, externalUserStats: externalStats }
-              : data.data;
-            
-            setStats(mergedStats);
-            setAuthError(false);
-          } else {
-            setError(data.error || 'Failed to load stats');
-          }
-        } catch (err) {
-          console.error('Failed to load stats:', err);
-          setError('Failed to load stats');
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    
-    loadAllData();
-  }, [environment, projectInfo, apiKey, projectId, startDate, endDate, getCurrentDomain, loadExternalUserStats]);
-
   // 处理认证
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -266,10 +185,9 @@ export default function DashboardPage() {
     setError('');
     
     try {
-      const domain = getCurrentDomain();
       // 同时加载统计数据和外部用户统计
       const response = await fetch(
-        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&domain=${encodeURIComponent(domain)}`,
+        `/api/stats?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}`,
         {
           headers: {
             'X-API-Key': apiKey,
@@ -358,16 +276,6 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            {/* 环境筛选器 */}
-            <select
-              value={environment}
-              onChange={(e) => setEnvironment(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
-            >
-              <option value="preview">Preview</option>
-              <option value="production">Production</option>
-            </select>
-
             <button
               onClick={handleRefresh}
               disabled={loading}

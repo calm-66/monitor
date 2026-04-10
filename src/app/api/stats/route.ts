@@ -6,10 +6,7 @@ import { StatsResponse } from '@/types/monitor';
 /**
  * GET /api/stats
  * 获取统计数据
- * 查询参数：projectId, startDate, endDate, domain
- * 
- * domain 参数：直接传入域名（如 'usonly-preview.vercel.app' 或 'usonly.com'）
- * 前端根据用户选择的环境（preview/production）传入对应的域名
+ * 查询参数：projectId, startDate, endDate
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +14,6 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get('projectId');
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
-    const domain = searchParams.get('domain') || ''; // 直接传入域名
     
     // 验证必填参数
     if (!projectId) {
@@ -25,13 +21,6 @@ export async function GET(request: NextRequest) {
         { success: false, error: 'Missing projectId parameter' },
         { status: 400 }
       );
-    }
-
-    // 构建域名筛选条件
-    const environmentFilter: any = {};
-    if (domain) {
-      // 直接使用传入的域名进行筛选
-      environmentFilter.pageUrl = { contains: domain };
     }
     
     // 验证 API Key
@@ -72,8 +61,7 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: start,
           lte: end
-        },
-        ...environmentFilter
+        }
       }
     });
     
@@ -85,8 +73,7 @@ export async function GET(request: NextRequest) {
           gte: start,
           lte: end
         },
-        userId: { not: null },
-        ...environmentFilter
+        userId: { not: null }
       },
       select: {
         userId: true
@@ -105,8 +92,7 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: start,
           lte: end
-        },
-        ...environmentFilter
+        }
       },
       orderBy: {
         _count: {
@@ -127,8 +113,7 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: start,
           lte: end
-        },
-        ...environmentFilter
+        }
       },
       orderBy: {
         createdAt: 'asc'
@@ -161,8 +146,7 @@ export async function GET(request: NextRequest) {
           gte: start,
           lte: end
         },
-        pageUrl: { not: null },
-        ...environmentFilter
+        pageUrl: { not: null }
       },
       orderBy: {
         _count: {
