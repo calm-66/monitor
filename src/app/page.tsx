@@ -108,6 +108,13 @@ export default function Home() {
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
+  // 复制 Project ID
+  const copyProjectId = (projectId: string) => {
+    navigator.clipboard.writeText(projectId);
+    setSuccessMessage('Project ID copied to clipboard');
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-6xl mx-auto">
@@ -204,15 +211,27 @@ export default function Home() {
                           <p>Domain: {project.domain}</p>
                         )}
                       </div>
-                      <div className="mt-3 flex items-center space-x-4">
+                      <div className="mt-3 space-y-2">
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-500">API Key:</span>
-                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700">
+                          <span className="text-sm text-gray-500 min-w-[80px]">Project ID:</span>
+                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700 flex-1 truncate">
+                            {project.id}
+                          </code>
+                          <button
+                            onClick={() => copyProjectId(project.id)}
+                            className="text-blue-600 hover:text-blue-800 text-sm whitespace-nowrap"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-500 min-w-[80px]">API Key:</span>
+                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700 flex-1 truncate">
                             {project.apiKey.substring(0, 20)}...
                           </code>
                           <button
                             onClick={() => copyApiKey(project.apiKey)}
-                            className="text-blue-600 hover:text-blue-800 text-sm"
+                            className="text-blue-600 hover:text-blue-800 text-sm whitespace-nowrap"
                           >
                             Copy
                           </button>
