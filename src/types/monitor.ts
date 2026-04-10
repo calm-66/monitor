@@ -62,6 +62,12 @@ export interface DeviceInfo {
   os?: string;
 }
 
+// 地区分布数据（用于饼图）
+export interface RegionData {
+  name: string;
+  count: number;
+}
+
 // 统计响应数据
 export interface StatsResponse {
   totalViews: number;
@@ -77,6 +83,10 @@ export interface StatsResponse {
     failedCount: number;
     rateLimitedRatio: number; // 被限流比例
   };
+  // 当天 PV
+  todayPV?: number;
+  // 按地区分组数据（用于饼图，前 10 个地区）
+  viewsByRegion?: RegionData[];
   // 外部用户统计（可选）
   externalUserStats?: {
     totalUsers: number;

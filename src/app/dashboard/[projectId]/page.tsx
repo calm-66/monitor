@@ -341,7 +341,7 @@ export default function DashboardPage() {
         {stats && (
           <>
             {/* 统计卡片 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
               {/* 注册用户数（外部 API） */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
@@ -361,6 +361,15 @@ export default function DashboardPage() {
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* 当日 PV */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-sm font-medium text-gray-500">Daily Page Views (PV)</h3>
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {stats.todayPV ?? '-'}
+                </p>
+                <p className="mt-2 text-xs text-gray-500">Today</p>
               </div>
 
               {/* 每日访问用户数（UV） */}
@@ -445,6 +454,37 @@ export default function DashboardPage() {
                     <Legend />
                     <Bar dataKey="count" fill="#10B981" name="Active Users" />
                   </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+                  No data available for this period
+                </div>
+              )}
+            </div>
+
+            {/* IP 地址解析饼状图 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">IP Address Locations (Top 10 Regions)</h3>
+              {stats.viewsByRegion && stats.viewsByRegion.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={stats.viewsByRegion}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {stats.viewsByRegion.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">

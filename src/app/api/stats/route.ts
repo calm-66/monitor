@@ -81,7 +81,28 @@ export async function GET(request: NextRequest) {
       distinct: ['userId']
     });
     
-    // 按国家分组统计
+    // 按城市/地区分组统计（用于饼图）- 使用 groupBy 直接按 city, region, country 分组
+    const viewsByRegionResult = await prisma.event.groupBy({
+      by: ['city', 'region', 'country'],
+      _count: {
+        id: true
+      },
+      where: {
+        projectId,
+        createdAt: {
+          gte: start,
+          lte: end
+        }
+      },
+      orderBy: {
+        _count: {
+          id: 'desc'
+        }
+      },
+      take: 10 // 限制前 10 个地区
+    });
+    
+    // 按国家分组统计（保留原有逻辑用于其他展示）
     const viewsByCountryResult = await prisma.event.groupBy({
       by: ['country'],
       _count: {
@@ -131,6 +152,25 @@ export async function GET(request: NextRequest) {
       date,
       count
     }));
+    
+    // 计算当天 PV（使用北京时间）
+    const today = formatAsBeijingDate(new Date());
+    const todayPV = viewsByDay.find(item => item.date === today)?.count || 0;
+    
+    // 处理地区数据（用于饼图）- 优先使用城市，其次使用地区，最后使用国家
+    const viewsByRegion = viewsByRegionResult
+      .map((item: { city: string | null; region: string | null; country: string | null; _count: { id: number } }) => {
+        let regionName = item.city || item.region || item.country || 'Unknown';
+        // 移除省份后缀（如"上海市"->"上海"），避免重复
+        if (regionName && regionName.endsWith('市') && regionName.length > 2) {
+          regionName = regionName.slice(0, -1);
+        }
+        return {
+          name: regionName,
+          count: item._count.id
+        };
+      })
+      .filter(item => item.name !== 'Unknown'); // 过滤掉 Unknown 地区
     
     // 按日期分组统计 UV（最近 30 天，使用北京时间）
     // 获取所有有 userId 的事件记录
@@ -227,7 +267,9 @@ export async function GET(request: NextRequest) {
         rateLimitedCount,
         failedCount,
         rateLimitedRatio
-      }
+      },
+      todayPV,
+      viewsByRegion
     };
     
     return NextResponse.json({ success: true, data: stats });
