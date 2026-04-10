@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { parseDateRange, log } from '@/lib/utils';
+import { parseDateRange, log, formatAsBeijingDate } from '@/lib/utils';
 import { StatsResponse } from '@/types/monitor';
 
 /**
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
       take: 20 // 限制前 20 个国家
     });
     
-    // 按日期分组统计（最近 30 天）
+    // 按日期分组统计（最近 30 天，使用北京时间）
     const viewsByDayResult = await prisma.event.groupBy({
       by: ['createdAt'],
       _count: {
@@ -135,11 +135,13 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // 按日期分组（需要手动处理，因为 Prisma 不支持 DATE_TRUNC）
+    // 按日期分组（使用北京时间转换）
+    // 逻辑：只要记录的 createdAt 转换为北京时间后是当天，就认为是当天的访问
     const viewsByDayMap = new Map<string, number>();
     viewsByDayResult.forEach((item: { createdAt: Date; _count: { id: number } }) => {
-      const dateKey = item.createdAt.toISOString().split('T')[0];
-      viewsByDayMap.set(dateKey, (viewsByDayMap.get(dateKey) || 0) + item._count.id);
+      // 使用北京时间日期作为分组 key
+      const beijingDate = formatAsBeijingDate(item.createdAt);
+      viewsByDayMap.set(beijingDate, (viewsByDayMap.get(beijingDate) || 0) + item._count.id);
     });
     
     const viewsByDay = Array.from(viewsByDayMap.entries()).map(([date, count]) => ({
