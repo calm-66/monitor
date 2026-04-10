@@ -365,7 +365,7 @@ export default function DashboardPage() {
 
               {/* 当日 PV */}
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Daily Page Views (PV)</h3>
+                <h3 className="text-sm font-medium text-gray-500">Daily Page Views</h3>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
                   {stats.todayPV ?? '-'}
                 </p>
@@ -374,11 +374,11 @@ export default function DashboardPage() {
 
               {/* 每日访问用户数（UV） */}
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Daily Visitors (UV)</h3>
+                <h3 className="text-sm font-medium text-gray-500">Unique Visitors</h3>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
                   {stats.uniqueVisitorsByDay?.length > 0 ? stats.uniqueVisitorsByDay[stats.uniqueVisitorsByDay.length - 1]?.count : '-'}
                 </p>
-                <p className="mt-2 text-xs text-gray-500">Latest day count</p>
+                <p className="mt-2 text-xs text-gray-500">Today</p>
               </div>
 
               {/* 每日登录用户数 */}
@@ -462,14 +462,14 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* IP 地址解析饼状图 */}
+            {/* IP 地址解析饼状图 - 显示已登录用户的地区分布 */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">IP Address Locations (Top 10 Regions)</h3>
-              {stats.viewsByRegion && stats.viewsByRegion.length > 0 ? (
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users Locations (Top 10 Regions)</h3>
+              {stats.activeUsersByRegion && stats.activeUsersByRegion.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={stats.viewsByRegion}
+                      data={stats.activeUsersByRegion}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -478,7 +478,7 @@ export default function DashboardPage() {
                       fill="#8884d8"
                       dataKey="count"
                     >
-                      {stats.viewsByRegion.map((entry, index) => (
+                      {stats.activeUsersByRegion.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>

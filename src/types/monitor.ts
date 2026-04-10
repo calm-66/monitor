@@ -85,8 +85,10 @@ export interface StatsResponse {
   };
   // 当天 PV
   todayPV?: number;
-  // 按地区分组数据（用于饼图，前 10 个地区）
+  // 按地区分组数据（用于饼图，前 10 个地区）- 所有事件
   viewsByRegion?: RegionData[];
+  // 按地区分组数据（用于饼图，前 10 个地区）- 仅已登录用户事件
+  activeUsersByRegion?: RegionData[];
   // 外部用户统计（可选）
   externalUserStats?: {
     totalUsers: number;
