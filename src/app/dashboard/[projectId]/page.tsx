@@ -365,11 +365,10 @@ export default function DashboardPage() {
 
               {/* 当日 PV */}
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Daily Page Views</h3>
+                <h3 className="text-sm font-medium text-gray-500">Page Views</h3>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
                   {stats.todayPV ?? '-'}
                 </p>
-                <p className="mt-2 text-xs text-gray-500">Today</p>
               </div>
 
               {/* 每日访问用户数（UV） */}
@@ -378,12 +377,11 @@ export default function DashboardPage() {
                 <p className="text-3xl font-bold text-gray-900 mt-2">
                   {stats.uniqueVisitorsByDay?.length > 0 ? stats.uniqueVisitorsByDay[stats.uniqueVisitorsByDay.length - 1]?.count : '-'}
                 </p>
-                <p className="mt-2 text-xs text-gray-500">Today</p>
               </div>
 
               {/* 每日登录用户数 */}
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Daily Active Users</h3>
+                <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
                   {(() => {
                     const dailyActiveUsers = stats.externalUserStats?.dailyActiveUsers;
@@ -393,7 +391,6 @@ export default function DashboardPage() {
                     return '-';
                   })()}
                 </p>
-                <p className="mt-2 text-xs text-gray-500">Latest day count</p>
               </div>
             </div>
 

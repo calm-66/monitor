@@ -172,42 +172,49 @@ export async function GET(request: NextRequest) {
       })
       .filter(item => item.name !== 'Unknown'); // 过滤掉 Unknown 地区
     
-    // 按城市/地区分组统计已登录用户事件（用于饼图）- 使用 groupBy 直接按 city, region, country 分组
-    const activeUsersByRegionResult = await prisma.event.groupBy({
-      by: ['city', 'region', 'country'],
-      _count: {
-        id: true
-      },
+    // 按城市/地区分组统计已登录用户（UV）- 按 userId 去重后统计独立用户数
+    // 先获取所有有 userId 的事件记录
+    const eventsWithUserIdForRegion = await prisma.event.findMany({
       where: {
         projectId,
         createdAt: {
           gte: start,
           lte: end
         },
-        userId: { not: null } // 只统计有 userId 的事件（已登录用户）
+        userId: { not: null }
       },
-      orderBy: {
-        _count: {
-          id: 'desc'
-        }
-      },
-      take: 10 // 限制前 10 个地区
+      select: {
+        userId: true,
+        city: true,
+        region: true,
+        country: true
+      }
     });
     
-    // 处理已登录用户地区数据（用于饼图）- 优先使用城市，其次使用地区，最后使用国家
-    const activeUsersByRegion = activeUsersByRegionResult
-      .map((item: { city: string | null; region: string | null; country: string | null; _count: { id: number } }) => {
-        let regionName = item.city || item.region || item.country || 'Unknown';
-        // 移除省份后缀（如"上海市"->"上海"），避免重复
-        if (regionName && regionName.endsWith('市') && regionName.length > 2) {
-          regionName = regionName.slice(0, -1);
-        }
-        return {
-          name: regionName,
-          count: item._count.id
-        };
-      })
-      .filter(item => item.name !== 'Unknown'); // 过滤掉 Unknown 地区
+    // 按地区分组，每个地区存储独立的 userId 集合
+    const regionUserMap = new Map<string, Set<string>>();
+    eventsWithUserIdForRegion.forEach((event) => {
+      let regionName = event.city || event.region || event.country || 'Unknown';
+      // 移除省份后缀（如"上海市"->"上海"），避免重复
+      if (regionName && regionName.endsWith('市') && regionName.length > 2) {
+        regionName = regionName.slice(0, -1);
+      }
+      if (regionName === 'Unknown') return;
+      
+      if (!regionUserMap.has(regionName)) {
+        regionUserMap.set(regionName, new Set());
+      }
+      regionUserMap.get(regionName)!.add(event.userId!);
+    });
+    
+    // 转换为数组并排序，取前 10 个地区
+    const activeUsersByRegion = Array.from(regionUserMap.entries())
+      .map(([name, userIdSet]) => ({
+        name,
+        count: userIdSet.size
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
     
     // 按日期分组统计 UV（最近 30 天，使用北京时间）
     // 获取所有有 userId 的事件记录
