@@ -58,13 +58,13 @@ function filterCurrentMonth<T extends { date: string }>(data: T[]): T[] {
 // 自定义 Tooltip 组件
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ value: number; name: string }>;
+  payload?: Array<{ value?: number | string; name?: string }>;
   label?: string;
   color: string;
 }
 
 function CustomTooltip({ active, payload, label, color }: CustomTooltipProps) {
-  if (active && payload && payload.length > 0) {
+  if (active && payload && payload.length > 0 && payload[0]) {
     return (
       <div className="bg-white p-3 border border-gray-200 rounded shadow-md">
         <p className="font-semibold mb-1" style={{ color }}>{label}</p>
