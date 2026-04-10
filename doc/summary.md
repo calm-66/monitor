@@ -20,16 +20,19 @@ Monitor Platform 是一个全栈用户行为监控平台，用于监控 UsOnly �
 - **多租户支持**: 通过 Project + API Key 实现多项目隔离
 
 ### 3. Server-side Integration（服务端集成）
-- **外部 API 集成**: 通过配置 statsApiUrl 从业务系统获取统计数据
+- **外部 API 集成**: 从业务系统获取统计数据（注册用户数、每日登录用户数等）
+- **CORS 解决方案**: 通过 `/api/external-stats` 代理 API 调用外部服务，避免浏览器 CORS 限制
 - **自动刷新**: 每 5 分钟自动调用外部 API 刷新数据
-- **支持数据**: 注册用户数、每日登录用户数等业务指标
+- **手动刷新**: 支持 Refresh 按钮手动刷新
+- **环境切换自动加载**: 切换 Preview/Production 环境时自动加载所有数据
 
 ### 4. Dashboard 展示
-- **Registered Users**: 总注册用户数 + 今日/本周/本月新增
-- **Daily Visitors (UV)**: 每日独立访客数
-- **Daily Active Users**: 每日登录用户数
+- **Registered Users**: 总注册用户数 + 今日/本周/本月新增（来自外部 API）
+- **Daily Visitors (UV)**: 每日独立访客数（来自客户端追踪）
+- **Daily Active Users**: 每日登录用户数（来自外部 API）
 - **Daily Visitors (Last 30 Days)**: 30 天访问趋势柱状图
 - **Daily Active Users (Last 30 Days)**: 30 天登录趋势柱状图
+- **环境切换**: 支持 Preview/Production 环境切换，自动加载对应环境数据
 
 ## 技术架构
 
@@ -141,28 +144,44 @@ src/types/
 
 ## 关键技术点
 
-### 1. CORS 跨域配置
-- API Routes 中添加跨域响应头
-- 支持 OPTIONS 预封请求
-- 允许自定义域名白名单
+### 1. CORS 解决方案
+**问题**：浏览器直接调用外部 API 时，Vercel Preview 环境的 HTTP→HTTPS 重定向导致 CORS 预检请求失败。
 
-### 2. API 验证
+**方案**：服务器端代理
+```
+前端 → /api/external-stats (Monitor 服务器) → 外部 API
+```
+
+**原理**：
+- CORS 是浏览器的安全机制，服务器对服务器请求没有 CORS 限制
+- 前端调用同域的 `/api/external-stats` 代理 API
+- 代理 API 用服务器身份请求外部 API，返回数据给前端
+
+**关键代码**：
+- `src/app/api/external-stats/route.ts` - 代理 API 端点
+- Dashboard 中调用代理 API 而非直接调用外部 API
+
+**辅助方案**：
+- `vercel.json` 中配置 CORS headers（用于其他直接访问的场景）
+
+### 2. 多环境支持
+- **previewDomain + productionDomain**: 每个项目可配置两个环境的域名
+- **动态 API 地址生成**: 根据当前选择的环境自动生成对应的 statsApiUrl
+- **环境筛选器**: Dashboard 顶部支持切换 Preview/Production 环境
+
+### 3. API 验证
+
 - X-API-Key 和 X-Project-ID 请求头验证
 - 项目状态检查（isActive）
 
-### 3. IP 限流处理
+### 4. IP 限流处理
 - ip-api.com 限流时记录到 IpLimitTracker
 - 按日期（YYYY-MM-DD）统计限流情况
 
-### 4. 批量上报 + 重试
+### 5. 批量上报 + 重试
 - 批量大小：10 条
 - 刷新间隔：60 秒
 - 指数退避重试：1s, 2s, 4s
-
-### 5. Server-side Integration
-- 每 5 分钟自动调用外部 API
-- 支持 Refresh 按钮手动刷新
-- 数据聚合显示在 Dashboard
 
 ## 环境变量
 
