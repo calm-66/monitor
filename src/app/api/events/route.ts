@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { resolveGeoIP, parseUserAgent } from '@/lib/geoip';
-import { getClientIP, formatDate, log } from '@/lib/utils';
+import { getClientIP, formatAsBeijingDate, log } from '@/lib/utils';
 import { EventPayload } from '@/types/monitor';
 
 // CORS 配置
@@ -148,8 +148,8 @@ export async function POST(request: NextRequest) {
       data: eventsToCreate
     });
     
-    // 更新 IP 限制追踪记录
-    const today = formatDate(new Date());
+    // 更新 IP 限制追踪记录（使用北京时间）
+    const today = formatAsBeijingDate(new Date());
     await prisma.ipLimitTracker.upsert({
       where: {
         projectId_date: {
