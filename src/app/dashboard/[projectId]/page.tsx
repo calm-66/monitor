@@ -43,6 +43,38 @@ function getXAxisTicks(data: Array<{ date: string }>): string[] {
   return data.filter((_, index) => index % 7 === 0).map(item => item.date);
 }
 
+// 过滤出当前月份的数据
+function filterCurrentMonth(data: Array<{ date: string }>): Array<{ date: string; count: number }> {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
+  return data.filter(item => {
+    const date = new Date(item.date);
+    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+  });
+}
+
+// 自定义 Tooltip 组件
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ value: number; name: string }>;
+  label?: string;
+  color: string;
+}
+
+function CustomTooltip({ active, payload, label, color }: CustomTooltipProps) {
+  if (active && payload && payload.length > 0) {
+    return (
+      <div className="bg-white p-3 border border-gray-200 rounded shadow-md">
+        <p className="font-semibold mb-1" style={{ color }}>{label}</p>
+        <p style={{ color }}>{payload[0].name} : {payload[0].value}</p>
+      </div>
+    );
+  }
+  return null;
+}
+
 /**
  * 根据项目 domain 构建 UsOnly stats API URL
  * 处理用户可能输入的 https://、http://、/ 等前缀
@@ -422,15 +454,15 @@ export default function DashboardPage() {
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Page Views ({getCurrentMonthStr()})</h3>
               {stats.viewsByDay && stats.viewsByDay.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.viewsByDay}>
+                  <BarChart data={filterCurrentMonth(stats.viewsByDay)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="date" 
                       tickFormatter={formatShortDate}
-                      ticks={getXAxisTicks(stats.viewsByDay)}
+                      ticks={getXAxisTicks(filterCurrentMonth(stats.viewsByDay))}
                     />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip content={(props) => <CustomTooltip {...props} color="#3B82F6" />} />
                     <Legend />
                     <Bar dataKey="count" fill="#3B82F6" name="Page Views" />
                   </BarChart>
@@ -447,15 +479,15 @@ export default function DashboardPage() {
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
               {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.uniqueVisitorsByDay}>
+                  <BarChart data={filterCurrentMonth(stats.uniqueVisitorsByDay)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="date" 
                       tickFormatter={formatShortDate}
-                      ticks={getXAxisTicks(stats.uniqueVisitorsByDay)}
+                      ticks={getXAxisTicks(filterCurrentMonth(stats.uniqueVisitorsByDay))}
                     />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip content={(props) => <CustomTooltip {...props} color="#10B981" />} />
                     <Legend />
                     <Bar dataKey="count" fill="#10B981" name="Unique Visitors" />
                   </BarChart>
@@ -472,17 +504,17 @@ export default function DashboardPage() {
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users ({getCurrentMonthStr()})</h3>
               {stats.externalUserStats?.dailyActiveUsers && stats.externalUserStats.dailyActiveUsers.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.externalUserStats.dailyActiveUsers}>
+                  <BarChart data={filterCurrentMonth(stats.externalUserStats.dailyActiveUsers)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="date" 
                       tickFormatter={formatShortDate}
-                      ticks={getXAxisTicks(stats.externalUserStats.dailyActiveUsers)}
+                      ticks={getXAxisTicks(filterCurrentMonth(stats.externalUserStats.dailyActiveUsers))}
                     />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip content={(props) => <CustomTooltip {...props} color="#8B5CF6" />} />
                     <Legend />
-                    <Bar dataKey="count" fill="#10B981" name="Active Users" />
+                    <Bar dataKey="count" fill="#8B5CF6" name="Active Users" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
