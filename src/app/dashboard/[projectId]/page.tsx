@@ -22,6 +22,27 @@ import {
 // 颜色配置
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 
+// 获取当前月份的字符串（如 "April 2026"）
+function getCurrentMonthStr(): string {
+  const now = new Date();
+  return now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+}
+
+// 格式化日期为短格式（如 "04-10"）
+function formatShortDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${month}-${day}`;
+}
+
+// 获取 X 轴刻度间隔（每隔 7 天显示一个标签）
+function getXAxisTicks(data: Array<{ date: string }>): string[] {
+  if (data.length === 0) return [];
+  // 返回每隔 7 天的日期
+  return data.filter((_, index) => index % 7 === 0).map(item => item.date);
+}
+
 /**
  * 根据项目 domain 构建 UsOnly stats API URL
  * 处理用户可能输入的 https://、http://、/ 等前缀
@@ -398,13 +419,17 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 每日访问用户数（PV）柱状图 */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Page Views (Last 30 Days)</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Page Views ({getCurrentMonthStr()})</h3>
               {stats.viewsByDay && stats.viewsByDay.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stats.viewsByDay}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
+                    <XAxis 
+                      dataKey="date" 
+                      tickFormatter={formatShortDate}
+                      ticks={getXAxisTicks(stats.viewsByDay)}
+                    />
+                    <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="count" fill="#3B82F6" name="Page Views" />
@@ -419,13 +444,17 @@ export default function DashboardPage() {
 
             {/* 每日独立访客数（UV）柱状图 */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Unique Visitors (Last 30 Days)</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
               {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stats.uniqueVisitorsByDay}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
+                    <XAxis 
+                      dataKey="date" 
+                      tickFormatter={formatShortDate}
+                      ticks={getXAxisTicks(stats.uniqueVisitorsByDay)}
+                    />
+                    <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="count" fill="#10B981" name="Unique Visitors" />
@@ -440,13 +469,17 @@ export default function DashboardPage() {
 
             {/* 每日登录用户数柱状图 */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users (Last 30 Days)</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users ({getCurrentMonthStr()})</h3>
               {stats.externalUserStats?.dailyActiveUsers && stats.externalUserStats.dailyActiveUsers.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stats.externalUserStats.dailyActiveUsers}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
+                    <XAxis 
+                      dataKey="date" 
+                      tickFormatter={formatShortDate}
+                      ticks={getXAxisTicks(stats.externalUserStats.dailyActiveUsers)}
+                    />
+                    <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="count" fill="#10B981" name="Active Users" />
