@@ -367,7 +367,7 @@ export default function DashboardPage() {
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-sm font-medium text-gray-500">Daily Visitors (UV)</h3>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.viewsByDay?.length > 0 ? stats.viewsByDay[stats.viewsByDay.length - 1]?.count : '-'}
+                  {stats.uniqueVisitorsByDay?.length > 0 ? stats.uniqueVisitorsByDay[stats.uniqueVisitorsByDay.length - 1]?.count : '-'}
                 </p>
                 <p className="mt-2 text-xs text-gray-500">Latest day count</p>
               </div>
@@ -390,9 +390,9 @@ export default function DashboardPage() {
 
             {/* 图表 - 每日访问用户数和每日登录用户数 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 每日访问用户数（UV）柱状图 */}
+            {/* 每日访问用户数（PV）柱状图 */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Visitors (Last 30 Days)</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Page Views (Last 30 Days)</h3>
               {stats.viewsByDay && stats.viewsByDay.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stats.viewsByDay}>
@@ -401,7 +401,28 @@ export default function DashboardPage() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="count" fill="#3B82F6" name="Visitors" />
+                    <Bar dataKey="count" fill="#3B82F6" name="Page Views" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+                  No data available for this period
+                </div>
+              )}
+            </div>
+
+            {/* 每日独立访客数（UV）柱状图 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Unique Visitors (Last 30 Days)</h3>
+              {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.uniqueVisitorsByDay}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" fill="#10B981" name="Unique Visitors" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (

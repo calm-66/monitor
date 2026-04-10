@@ -66,7 +66,8 @@ export interface StatsResponse {
   totalViews: number;
   uniqueVisitors: number;
   viewsByCountry: Array<{ country: string | null; count: number }>;
-  viewsByDay: Array<{ date: string; count: number }>;
+  viewsByDay: Array<{ date: string; count: number }>; // 每日 PV
+  uniqueVisitorsByDay: Array<{ date: string; count: number }>; // 每日 UV
   topPages: Array<{ page: string; count: number }>;
   ipResolveStats: {
     totalRequests: number;

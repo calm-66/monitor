@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       take: 20 // 限制前 20 个国家
     });
     
-    // 按日期分组统计（最近 30 天，使用北京时间）
+    // 按日期分组统计 PV（最近 30 天，使用北京时间）
     const viewsByDayResult = await prisma.event.groupBy({
       by: ['createdAt'],
       _count: {
@@ -120,11 +120,9 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // 按日期分组（使用北京时间转换）
-    // 逻辑：只要记录的 createdAt 转换为北京时间后是当天，就认为是当天的访问
+    // 按日期分组 PV（使用北京时间转换）
     const viewsByDayMap = new Map<string, number>();
     viewsByDayResult.forEach((item: { createdAt: Date; _count: { id: number } }) => {
-      // 使用北京时间日期作为分组 key
       const beijingDate = formatAsBeijingDate(item.createdAt);
       viewsByDayMap.set(beijingDate, (viewsByDayMap.get(beijingDate) || 0) + item._count.id);
     });
@@ -132,6 +130,38 @@ export async function GET(request: NextRequest) {
     const viewsByDay = Array.from(viewsByDayMap.entries()).map(([date, count]) => ({
       date,
       count
+    }));
+    
+    // 按日期分组统计 UV（最近 30 天，使用北京时间）
+    // 获取所有有 userId 的事件记录
+    const eventsWithUserId = await prisma.event.findMany({
+      where: {
+        projectId,
+        createdAt: {
+          gte: start,
+          lte: end
+        },
+        userId: { not: null }
+      },
+      select: {
+        userId: true,
+        createdAt: true
+      }
+    });
+    
+    // 按北京时间日期分组，统计每天的独立访客数（去重 userId）
+    const uniqueVisitorsByDayMap = new Map<string, Set<string>>();
+    eventsWithUserId.forEach((event) => {
+      const beijingDate = formatAsBeijingDate(event.createdAt);
+      if (!uniqueVisitorsByDayMap.has(beijingDate)) {
+        uniqueVisitorsByDayMap.set(beijingDate, new Set());
+      }
+      uniqueVisitorsByDayMap.get(beijingDate)!.add(event.userId!);
+    });
+    
+    const uniqueVisitorsByDay = Array.from(uniqueVisitorsByDayMap.entries()).map(([date, userIdSet]) => ({
+      date,
+      count: userIdSet.size
     }));
     
     // 热门页面排行
@@ -186,6 +216,7 @@ export async function GET(request: NextRequest) {
         count: item._count.id
       })),
       viewsByDay,
+      uniqueVisitorsByDay,
       topPages: topPagesResult.map((item: { pageUrl: string | null; _count: { id: number } }) => ({
         page: item.pageUrl || 'Unknown',
         count: item._count.id
