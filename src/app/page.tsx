@@ -12,8 +12,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
-  const [newProjectPreviewDomain, setNewProjectPreviewDomain] = useState('');
-  const [newProjectProductionDomain, setNewProjectProductionDomain] = useState('');
+  const [newProjectDomain, setNewProjectDomain] = useState('');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -56,8 +55,7 @@ export default function Home() {
         body: JSON.stringify({
           name: newProjectName.trim(),
           description: newProjectDescription.trim() || undefined,
-          previewDomain: newProjectPreviewDomain.trim() || undefined,
-          productionDomain: newProjectProductionDomain.trim() || undefined,
+          domain: newProjectDomain.trim() || undefined,
         }),
       });
 
@@ -67,8 +65,7 @@ export default function Home() {
         setSuccessMessage(`Project "${data.data.project.name}" created! API Key: ${data.data.project.apiKey}`);
         setNewProjectName('');
         setNewProjectDescription('');
-        setNewProjectPreviewDomain('');
-        setNewProjectProductionDomain('');
+        setNewProjectDomain('');
         loadProjects();
       } else {
         setError(data.error || 'Failed to create project');
@@ -149,28 +146,15 @@ export default function Home() {
               />
             </div>
             <div>
-              <label htmlFor="previewDomain" className="block text-sm font-medium text-gray-700 mb-1">
-                Preview Domain
+              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
+                Domain
               </label>
               <input
                 type="text"
-                id="previewDomain"
-                value={newProjectPreviewDomain}
-                onChange={(e) => setNewProjectPreviewDomain(e.target.value)}
-                placeholder="usonly-preview.vercel.app"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              />
-            </div>
-            <div>
-              <label htmlFor="productionDomain" className="block text-sm font-medium text-gray-700 mb-1">
-                Production Domain
-              </label>
-              <input
-                type="text"
-                id="productionDomain"
-                value={newProjectProductionDomain}
-                onChange={(e) => setNewProjectProductionDomain(e.target.value)}
-                placeholder="usonly.com"
+                id="domain"
+                value={newProjectDomain}
+                onChange={(e) => setNewProjectDomain(e.target.value)}
+                placeholder="usonly-preview.vercel.app or usonly.com"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
@@ -215,12 +199,9 @@ export default function Home() {
                       {project.description && (
                         <p className="text-gray-500 text-sm mt-1">{project.description}</p>
                       )}
-                      <div className="text-gray-500 text-sm mt-1 space-y-1">
+                      <div className="text-gray-500 text-sm mt-1">
                         {project.previewDomain && (
-                          <p>Preview: {project.previewDomain}</p>
-                        )}
-                        {project.productionDomain && (
-                          <p>Production: {project.productionDomain}</p>
+                          <p>Domain: {project.previewDomain}</p>
                         )}
                       </div>
                       <div className="mt-3 flex items-center space-x-4">

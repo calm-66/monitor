@@ -38,11 +38,16 @@ export async function GET() {
 /**
  * POST /api/projects
  * 创建新的监控项目
+ * 
+ * body 参数：
+ * - name: 项目名称
+ * - description: 项目描述（可选）
+ * - domain: 项目域名（用于区分数据来源，如 usonly-preview.vercel.app 或 usonly.com）
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, previewDomain, productionDomain } = body;
+    const { name, description, domain } = body;
     
     // 验证必填字段
     if (!name || typeof name !== 'string') {
@@ -75,13 +80,13 @@ export async function POST(request: NextRequest) {
     // 生成 API Key
     const apiKey = generateApiKey();
     
-    // 创建项目（不再自动设置 statsApiUrl，前端根据环境动态生成）
+    // 创建项目
+    // 使用 previewDomain 存储传入的 domain（保持向后兼容）
     const project = await prisma.project.create({
       data: {
         name,
         description: description || null,
-        previewDomain: previewDomain || null,
-        productionDomain: productionDomain || null,
+        previewDomain: domain || null,
         apiKey,
         isActive: true,
       },
