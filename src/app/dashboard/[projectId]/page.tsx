@@ -22,6 +22,29 @@ import {
 // 颜色配置
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 
+/**
+ * 根据项目 domain 构建 UsOnly stats API URL
+ * 处理用户可能输入的 https://、http://、/ 等前缀
+ */
+function buildStatsApiUrl(domain: string | null): string {
+  if (!domain) return '';
+  
+  // 移除前后空格
+  let cleanedDomain = domain.trim();
+  
+  // 移除协议前缀 (http://, https://)
+  cleanedDomain = cleanedDomain.replace(/^https?:\/\//i, '');
+  
+  // 移除末尾的斜杠
+  cleanedDomain = cleanedDomain.replace(/\/+$/, '');
+  
+  // 如果为空则返回空字符串
+  if (!cleanedDomain) return '';
+  
+  // 构建完整的 API URL
+  return `https://${cleanedDomain}/api/monitor/stats`;
+}
+
 export default function DashboardPage() {
   const params = useParams();
   const projectId = params.projectId as string;
@@ -62,6 +85,12 @@ export default function DashboardPage() {
   // 获取外部用户统计 - 使用代理 API 避免 CORS 问题
   const loadExternalUserStats = useCallback(async () => {
     try {
+      // 根据项目 domain 构建 statsApiUrl
+      const statsApiUrl = buildStatsApiUrl(projectInfo?.domain || null);
+      
+      // 如果没有有效的 statsApiUrl，直接返回
+      if (!statsApiUrl) return null;
+      
       // 使用服务器端代理 API 调用 UsOnly，避免 CORS 限制
       const response = await fetch('/api/external-stats', {
         method: 'POST',
@@ -69,6 +98,7 @@ export default function DashboardPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          statsApiUrl,
           apiKey: apiKey
         })
       });
@@ -84,7 +114,7 @@ export default function DashboardPage() {
       console.error('Failed to load external user stats:', err);
       return null; // API 调用失败不影响其他功能
     }
-  }, [apiKey]);
+  }, [projectInfo, apiKey]);
 
   // 加载统计数据
   const loadStats = useCallback(async () => {
