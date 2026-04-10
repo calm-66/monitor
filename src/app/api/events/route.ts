@@ -4,6 +4,19 @@ import { resolveGeoIP, parseUserAgent } from '@/lib/geoip';
 import { getClientIP, formatAsBeijingDate, log } from '@/lib/utils';
 import { EventPayload } from '@/types/monitor';
 
+/**
+ * 获取北京时间（UTC+8）
+ * PostgreSQL 存储 timestamp 时会自动转换为 UTC，所以我们在写入时传入北京时间对象
+ */
+function getBeijingNow(): Date {
+  // 获取当前 UTC 时间
+  const now = new Date();
+  // 转换为北京时间（UTC+8）
+  // 方法：获取 UTC 时间戳，加上 8 小时的毫秒数
+  const beijingTimestamp = now.getTime() + (8 * 60 * 60 * 1000);
+  return new Date(beijingTimestamp);
+}
+
 // CORS 配置
 function getCorsHeaders(origin?: string) {
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').filter(Boolean) || ['*'];
@@ -118,6 +131,9 @@ export async function POST(request: NextRequest) {
     const firstEvent = events[0];
     const deviceInfo = parseUserAgent(firstEvent?.userAgent);
     
+    // 获取北京时间（用于 createdAt）
+    const beijingNow = getBeijingNow();
+    
     // 准备批量插入的数据
     const eventsToCreate = events.map((event: EventPayload) => ({
       projectId,
@@ -141,6 +157,7 @@ export async function POST(request: NextRequest) {
       screenWidth: event.screenWidth || null,
       screenHeight: event.screenHeight || null,
       metadata: event.metadata || undefined,
+      createdAt: beijingNow,  // 使用北京时间
     }));
     
     // 批量插入事件
