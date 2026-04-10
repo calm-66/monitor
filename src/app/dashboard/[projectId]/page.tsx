@@ -540,7 +540,7 @@ export default function DashboardPage() {
 
             {/* IP 地址解析饼状图 - 显示已登录用户的地区分布 */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users Locations (Top 10 Regions)</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Unique Visitors Locations (Top 10 Regions, {getCurrentMonthStr()})</h3>
               {stats.activeUsersByRegion && stats.activeUsersByRegion.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
