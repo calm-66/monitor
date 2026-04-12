@@ -36,17 +36,25 @@ function formatShortDate(dateStr: string): string {
   return `${month}-${day}`;
 }
 
-// 获取 X 轴刻度间隔（确保显示第一天和最后一天，中间每隔 7 天显示一个标签）
+// 获取 X 轴刻度间隔（根据数据量动态调整刻度显示策略）
 function getXAxisTicks(data: Array<{ date: string }>): string[] {
   if (data.length === 0) return [];
   if (data.length === 1) return [data[0].date];
   
+  // 数据量 <= 7 天：显示所有日期
+  if (data.length <= 7) {
+    return data.map(item => item.date);
+  }
+  
+  // 数据量 > 7 天：显示第一天、最后一天和中间每隔几天的日期
   const firstDate = data[0].date;
   const lastDate = data[data.length - 1].date;
   
-  // 获取中间每隔 7 天的日期
+  // 计算中间刻度间隔（目标显示约 5-7 个刻度）
+  const interval = Math.ceil(data.length / 6);
+  
   const middleDates = data
-    .filter((_, index) => index > 0 && index < data.length - 1 && index % 7 === 0)
+    .filter((_, index) => index > 0 && index < data.length - 1 && index % interval === 0)
     .map(item => item.date);
   
   // 返回包含第一天、中间日期和最后一天的数组
