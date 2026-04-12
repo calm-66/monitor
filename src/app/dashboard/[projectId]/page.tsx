@@ -73,6 +73,43 @@ function filterCurrentMonth<T extends { date: string }>(data: T[]): T[] {
   });
 }
 
+// 获取当天日期字符串（YYYY-MM-DD 格式）
+function getTodayStr(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// 填充完整日期范围，缺失的日期填充 0 值
+function fillMissingDates<T extends { date: string; count: number }>(
+  data: T[],
+  startDate: string,
+  endDate: string
+): T[] {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const dataMap = new Map<string, number>();
+  
+  // 建立现有数据的映射
+  data.forEach(item => {
+    dataMap.set(item.date, item.count);
+  });
+  
+  // 生成完整日期范围
+  const result: T[] = [];
+  const current = new Date(start);
+  while (current <= end) {
+    const dateStr = current.toISOString().split('T')[0];
+    const count = dataMap.get(dateStr) || 0;
+    result.push({ date: dateStr, count } as T);
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return result;
+}
+
 // 自定义 Tooltip 组件
 interface CustomTooltipProps {
   active?: boolean;
@@ -457,10 +494,12 @@ export default function DashboardPage() {
                 <p className="text-3xl font-bold text-gray-900 mt-2">
                   {(() => {
                     const dailyActiveUsers = stats.externalUserStats?.dailyActiveUsers;
-                    if (dailyActiveUsers && dailyActiveUsers.length > 0) {
-                      return dailyActiveUsers[dailyActiveUsers.length - 1].count;
-                    }
-                    return '-';
+                    if (!dailyActiveUsers || dailyActiveUsers.length === 0) return '0';
+                    
+                    // 查找当天的数据
+                    const todayStr = getTodayStr();
+                    const todayData = dailyActiveUsers.find(item => item.date === todayStr);
+                    return todayData?.count ?? 0;
                   })()}
                 </p>
               </div>
@@ -523,14 +562,22 @@ export default function DashboardPage() {
             {/* 每日登录用户数柱状图 */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users ({getCurrentMonthStr()})</h3>
-              {stats.externalUserStats?.dailyActiveUsers && stats.externalUserStats.dailyActiveUsers.length > 0 ? (
+              {stats.externalUserStats?.dailyActiveUsers ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={filterCurrentMonth(stats.externalUserStats.dailyActiveUsers)}>
+                  <BarChart data={fillMissingDates(
+                    filterCurrentMonth(stats.externalUserStats.dailyActiveUsers),
+                    startDate,
+                    endDate
+                  )}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="date" 
                       tickFormatter={formatShortDate}
-                      ticks={getXAxisTicks(filterCurrentMonth(stats.externalUserStats.dailyActiveUsers))}
+                      ticks={getXAxisTicks(fillMissingDates(
+                        filterCurrentMonth(stats.externalUserStats.dailyActiveUsers),
+                        startDate,
+                        endDate
+                      ))}
                       interval="preserveStartEnd"
                     />
                     <YAxis allowDecimals={false} />
