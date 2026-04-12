@@ -82,13 +82,22 @@ function getTodayStr(): string {
   return `${year}-${month}-${day}`;
 }
 
-// 填充完整日期范围，缺失的日期填充 0 值
+// 获取当前月份的第一天（YYYY-MM-DD 格式）
+function getCurrentMonthStart(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+}
+
+// 填充完整日期范围，缺失的日期填充 0 值（从当月 1 号到指定结束日期）
 function fillMissingDates<T extends { date: string; count: number }>(
   data: T[],
-  startDate: string,
+  _startDate: string,
   endDate: string
 ): T[] {
-  const start = new Date(startDate);
+  // 使用当月 1 号作为开始日期，而不是传入的 startDate（可能跨月）
+  const start = new Date(getCurrentMonthStart());
   const end = new Date(endDate);
   const dataMap = new Map<string, number>();
   
