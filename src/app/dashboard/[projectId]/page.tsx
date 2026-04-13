@@ -19,8 +19,21 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-// 颜色配置
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
+// 颜色配置（12 种颜色）
+const COLORS = [
+  '#3B82F6', // 蓝色
+  '#10B981', // 绿色
+  '#F59E0B', // 琥珀色
+  '#EF4444', // 红色
+  '#8B5CF6', // 紫色
+  '#EC4899', // 粉色
+  '#06B6D4', // 青色
+  '#84CC16', // 青柠色
+  '#F97316', // 橙色
+  '#14B8A6', // 蓝绿色
+  '#A855F7', // 紫罗兰色
+  '#D946EF', // 紫红色
+];
 
 // 获取当前月份的字符串（如 "April 2026"）
 function getCurrentMonthStr(): string {
@@ -618,8 +631,8 @@ export default function DashboardPage() {
                       fill="#F59E0B"
                       dataKey="count"
                     >
-                      {stats.activeUsersByRegion.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill="#F59E0B" />
+                      {stats.activeUsersByRegion.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
