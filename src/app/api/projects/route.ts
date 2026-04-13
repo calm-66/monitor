@@ -37,6 +37,11 @@ export async function GET() {
 /**
  * POST /api/projects
  * 创建新的监控项目
+ * 
+ * body 参数：
+ * - name: 项目名称
+ * - description: 项目描述（可选）
+ * - domain: 项目域名（用于区分数据来源，如 usonly-preview.vercel.app 或 usonly.com）
  */
 export async function POST(request: NextRequest) {
   try {

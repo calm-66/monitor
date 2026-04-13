@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { parseDateRange, log } from '@/lib/utils';
+import { parseDateRange, log, formatAsBeijingDate } from '@/lib/utils';
 import { StatsResponse } from '@/types/monitor';
 
 /**
@@ -81,7 +81,28 @@ export async function GET(request: NextRequest) {
       distinct: ['userId']
     });
     
-    // 按国家分组统计
+    // 按城市/地区分组统计（用于饼图）- 使用 groupBy 直接按 city, region, country 分组
+    const viewsByRegionResult = await prisma.event.groupBy({
+      by: ['city', 'region', 'country'],
+      _count: {
+        id: true
+      },
+      where: {
+        projectId,
+        createdAt: {
+          gte: start,
+          lte: end
+        }
+      },
+      orderBy: {
+        _count: {
+          id: 'desc'
+        }
+      },
+      take: 10 // 限制前 10 个地区
+    });
+    
+    // 按国家分组统计（保留原有逻辑用于其他展示）
     const viewsByCountryResult = await prisma.event.groupBy({
       by: ['country'],
       _count: {
@@ -102,7 +123,7 @@ export async function GET(request: NextRequest) {
       take: 20 // 限制前 20 个国家
     });
     
-    // 按日期分组统计（最近 30 天）
+    // 按日期分组统计 PV（最近 30 天，使用北京时间）
     const viewsByDayResult = await prisma.event.groupBy({
       by: ['createdAt'],
       _count: {
@@ -120,17 +141,112 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // 按日期分组（需要手动处理，因为 Prisma 不支持 DATE_TRUNC）
+    // 按日期分组 PV（使用北京时间转换）
     const viewsByDayMap = new Map<string, number>();
-    viewsByDayResult.forEach(item => {
-      const dateKey = item.createdAt.toISOString().split('T')[0];
-      viewsByDayMap.set(dateKey, (viewsByDayMap.get(dateKey) || 0) + item._count.id);
+    viewsByDayResult.forEach((item: { createdAt: Date; _count: { id: number } }) => {
+      const beijingDate = formatAsBeijingDate(item.createdAt);
+      viewsByDayMap.set(beijingDate, (viewsByDayMap.get(beijingDate) || 0) + item._count.id);
     });
     
     const viewsByDay = Array.from(viewsByDayMap.entries()).map(([date, count]) => ({
       date,
       count
     }));
+    
+    // 计算当天 PV（使用北京时间）
+    const today = formatAsBeijingDate(new Date());
+    const todayPV = viewsByDay.find(item => item.date === today)?.count || 0;
+    
+    // 处理地区数据（用于饼图）- 优先使用城市，其次使用地区，最后使用国家
+    const viewsByRegion = viewsByRegionResult
+      .map((item: { city: string | null; region: string | null; country: string | null; _count: { id: number } }) => {
+        let regionName = item.city || item.region || item.country || 'Unknown';
+        // 移除省份后缀（如"上海市"->"上海"），避免重复
+        if (regionName && regionName.endsWith('市') && regionName.length > 2) {
+          regionName = regionName.slice(0, -1);
+        }
+        return {
+          name: regionName,
+          count: item._count.id
+        };
+      })
+      .filter(item => item.name !== 'Unknown'); // 过滤掉 Unknown 地区
+    
+    // 按城市/地区分组统计已登录用户（UV）- 按 userId 去重后统计独立用户数
+    // 先获取所有有 userId 的事件记录
+    const eventsWithUserIdForRegion = await prisma.event.findMany({
+      where: {
+        projectId,
+        createdAt: {
+          gte: start,
+          lte: end
+        },
+        userId: { not: null }
+      },
+      select: {
+        userId: true,
+        city: true,
+        region: true,
+        country: true
+      }
+    });
+    
+    // 按地区分组，每个地区存储独立的 userId 集合
+    const regionUserMap = new Map<string, Set<string>>();
+    eventsWithUserIdForRegion.forEach((event) => {
+      let regionName = event.city || event.region || event.country || 'Unknown';
+      // 移除省份后缀（如"上海市"->"上海"），避免重复
+      if (regionName && regionName.endsWith('市') && regionName.length > 2) {
+        regionName = regionName.slice(0, -1);
+      }
+      if (regionName === 'Unknown') return;
+      
+      if (!regionUserMap.has(regionName)) {
+        regionUserMap.set(regionName, new Set());
+      }
+      regionUserMap.get(regionName)!.add(event.userId!);
+    });
+    
+    // 转换为数组并排序，取前 10 个地区
+    const activeUsersByRegion = Array.from(regionUserMap.entries())
+      .map(([name, userIdSet]) => ({
+        name,
+        count: userIdSet.size
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+    
+    // 按日期分组统计 UV（最近 30 天，使用北京时间）
+    // 获取所有有 userId 的事件记录
+    const eventsWithUserId = await prisma.event.findMany({
+      where: {
+        projectId,
+        createdAt: {
+          gte: start,
+          lte: end
+        },
+        userId: { not: null }
+      },
+      select: {
+        userId: true,
+        createdAt: true
+      }
+    });
+    
+    // 按北京时间日期分组，统计每天的独立访客数（去重 userId）
+    const uniqueVisitorsByDayMap = new Map<string, Set<string>>();
+    eventsWithUserId.forEach((event) => {
+      const beijingDate = formatAsBeijingDate(event.createdAt);
+      if (!uniqueVisitorsByDayMap.has(beijingDate)) {
+        uniqueVisitorsByDayMap.set(beijingDate, new Set());
+      }
+      uniqueVisitorsByDayMap.get(beijingDate)!.add(event.userId!);
+    });
+    
+    const uniqueVisitorsByDay = Array.from(uniqueVisitorsByDayMap.entries()).map(([date, userIdSet]) => ({
+      date,
+      count: userIdSet.size
+    })).sort((a, b) => a.date.localeCompare(b.date)); // 按日期升序排序
     
     // 热门页面排行
     const topPagesResult = await prisma.event.groupBy({
@@ -169,22 +285,23 @@ export async function GET(request: NextRequest) {
     });
     
     // 汇总 IP 限制统计
-    const totalRequests = ipLimitStats.reduce((sum, stat) => sum + stat.totalRequests, 0);
-    const successfulResolves = ipLimitStats.reduce((sum, stat) => sum + stat.successfulResolves, 0);
-    const rateLimitedCount = ipLimitStats.reduce((sum, stat) => sum + stat.rateLimitedCount, 0);
-    const failedCount = ipLimitStats.reduce((sum, stat) => sum + stat.failedCount, 0);
+    const totalRequests = ipLimitStats.reduce((sum: number, stat: { totalRequests: number }) => sum + stat.totalRequests, 0);
+    const successfulResolves = ipLimitStats.reduce((sum: number, stat: { successfulResolves: number }) => sum + stat.successfulResolves, 0);
+    const rateLimitedCount = ipLimitStats.reduce((sum: number, stat: { rateLimitedCount: number }) => sum + stat.rateLimitedCount, 0);
+    const failedCount = ipLimitStats.reduce((sum: number, stat: { failedCount: number }) => sum + stat.failedCount, 0);
     const rateLimitedRatio = totalRequests > 0 ? rateLimitedCount / totalRequests : 0;
     
     // 构建响应数据
     const stats: StatsResponse = {
       totalViews: totalViewsResult._count.id,
       uniqueVisitors: uniqueVisitorsResult.length,
-      viewsByCountry: viewsByCountryResult.map(item => ({
-        country: item.country,
+      viewsByCountry: viewsByCountryResult.map((item: { country: string | null; _count: { id: number } }) => ({
+        country: item.country || 'Unknown',
         count: item._count.id
       })),
       viewsByDay,
-      topPages: topPagesResult.map(item => ({
+      uniqueVisitorsByDay,
+      topPages: topPagesResult.map((item: { pageUrl: string | null; _count: { id: number } }) => ({
         page: item.pageUrl || 'Unknown',
         count: item._count.id
       })),
@@ -194,7 +311,10 @@ export async function GET(request: NextRequest) {
         rateLimitedCount,
         failedCount,
         rateLimitedRatio
-      }
+      },
+      todayPV,
+      viewsByRegion,
+      activeUsersByRegion
     };
     
     return NextResponse.json({ success: true, data: stats });

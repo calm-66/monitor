@@ -16,11 +16,12 @@ model Project {
   name        String    @unique // 项目名称（如 'usonly'）
   description String?   // 项目描述
   apiKey      String    @unique // API Key (用于 SDK 认证)
-  domain      String?   // 项目域名 (可选)
+  domain      String?   // 项目域名（如 'usonly-preview.vercel.app' 或 'usonly.com'）
   isActive    Boolean   @default(true) // 是否启用
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   events      Event[]
+  ipLimitTrackers IpLimitTracker[]
 }
 
 // 事件表 - 记录所有访问事件
@@ -63,7 +64,7 @@ model Event {
   // 额外元数据
   metadata Json? // 额外数据（JSON 格式）
 
-  createdAt DateTime @default(now())
+  createdAt DateTime // 事件创建时间（由客户端提供当地时间）
 
   @@index([projectId, createdAt]) // 按项目和时间查询
   @@index([projectId, eventType]) // 按项目和类型查询

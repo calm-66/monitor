@@ -108,6 +108,13 @@ export default function Home() {
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
+  // 复制 Project ID
+  const copyProjectId = (projectId: string) => {
+    navigator.clipboard.writeText(projectId);
+    setSuccessMessage('Project ID copied to clipboard');
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-6xl mx-auto">
@@ -154,7 +161,7 @@ export default function Home() {
                 id="domain"
                 value={newProjectDomain}
                 onChange={(e) => setNewProjectDomain(e.target.value)}
-                placeholder="https://example.com"
+                placeholder="usonly-preview.vercel.app or usonly.com"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
@@ -199,18 +206,32 @@ export default function Home() {
                       {project.description && (
                         <p className="text-gray-500 text-sm mt-1">{project.description}</p>
                       )}
-                      {project.domain && (
-                        <p className="text-gray-500 text-sm">Domain: {project.domain}</p>
-                      )}
-                      <div className="mt-3 flex items-center space-x-4">
+                      <div className="text-gray-500 text-sm mt-1">
+                        {project.domain && (
+                          <p>Domain: {project.domain}</p>
+                        )}
+                      </div>
+                      <div className="mt-3 space-y-2">
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-500">API Key:</span>
-                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700">
+                          <span className="text-sm text-gray-500 min-w-[80px]">Project ID:</span>
+                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700 flex-1 truncate">
+                            {project.id}
+                          </code>
+                          <button
+                            onClick={() => copyProjectId(project.id)}
+                            className="text-blue-600 hover:text-blue-800 text-sm whitespace-nowrap"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-500 min-w-[80px]">API Key:</span>
+                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700 flex-1 truncate">
                             {project.apiKey.substring(0, 20)}...
                           </code>
                           <button
                             onClick={() => copyApiKey(project.apiKey)}
-                            className="text-blue-600 hover:text-blue-800 text-sm"
+                            className="text-blue-600 hover:text-blue-800 text-sm whitespace-nowrap"
                           >
                             Copy
                           </button>

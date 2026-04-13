@@ -22,7 +22,7 @@
   const config = {
     projectId: null,
     apiKey: null,
-    endpoint: '/api/events',
+    endpoint: 'https://monitor-git-dev-calm-66s-projects.vercel.app/api/events',
     batchSize: 10,      // 批量大小
     flushInterval: 60000, // 1 分钟刷新
     maxRetries: 3       // 最大重试次数
@@ -75,6 +75,9 @@
    * 追踪页面浏览
    */
   function trackPageview(customData) {
+    // 分离 metadata 字段和其他字段
+    var metadata = customData || {};
+    
     const payload = {
       eventType: 'pageview',
       pageUrl: window.location.href,
@@ -84,8 +87,8 @@
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
       userId: getOrCreateUserId(),
-      timestamp: Date.now(),
-      ...customData
+      // 使用浏览器当地时间（ISO 格式，包含时区信息）
+      createdAt: new Date().toISOString()
     };
 
     queueEvent(payload);
@@ -103,7 +106,8 @@
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
       userId: getOrCreateUserId(),
-      timestamp: Date.now(),
+      // 使用浏览器当地时间（ISO 格式，包含时区信息）
+      createdAt: new Date().toISOString(),
       metadata: eventData || {}
     };
 
@@ -125,6 +129,13 @@
         });
       }
     });
+  }
+
+  /**
+   * 从 ISO 字符串解析日期（保持时区信息）
+   */
+  function parseDate(isoString) {
+    return new Date(isoString);
   }
 
   /**

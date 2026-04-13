@@ -65,3 +65,18 @@ export function parseDateRange(startDate?: string, endDate?: string): { start: D
   end.setHours(23, 59, 59, 999);
   return { start, end };
 }
+
+/**
+ * 将 UTC 日期转换为北京时间 (UTC+8) 并格式化为 YYYY-MM-DD
+ * @param date - UTC 日期对象
+ * @returns 北京时间格式的日期字符串 (YYYY-MM-DD)
+ */
+export function formatAsBeijingDate(date: Date): string {
+  // 使用 toLocaleDateString 指定时区转换为北京时间
+  return date.toLocaleDateString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).replace(/\//g, '-');
+}
