@@ -110,6 +110,26 @@ export interface IpLimitStats {
   rateLimitedRatio: number;
 }
 
+// 用户详细信息（用于 UV 和 Active Users 详情）
+export interface UserDetail {
+  userId: string | null;
+  city: string;
+  deviceIcon: string;
+  deviceText: string;
+  browser: string;
+  localTime: string;
+  pageUrl: string | null;
+}
+
+// 用户详细信息 API 响应
+export interface UserDetailsResponse {
+  success: boolean;
+  data: {
+    users: UserDetail[];
+    total: number;
+  };
+}
+
 // API 响应通用类型
 export interface ApiResponse<T> {
   success: boolean;

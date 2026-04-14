@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { StatsResponse, IpLimitStats, Project } from '@/types/monitor';
+import { StatsResponse, IpLimitStats, Project, UserDetail } from '@/types/monitor';
 import {
   LineChart,
   Line,
@@ -196,8 +196,14 @@ export default function DashboardPage() {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
+  // 用户详细信息面板状态
+  const [selectedCard, setSelectedCard] = useState<'uv' | 'active' | null>(null);
+  const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
+  const [userDetailsLoading, setUserDetailsLoading] = useState(false);
+
   // 日期范围结束
   const endDateStr = endDate;
+
   const loadProjectInfo = useCallback(async () => {
     try {
       const response = await fetch(`/api/projects/${projectId}`);
@@ -287,6 +293,44 @@ export default function DashboardPage() {
       return null;
     }
   }, [projectId, startDate, endDate, apiKey]);
+
+  // 加载用户详细信息
+  const loadUserDetails = useCallback(async (type: 'uv' | 'active') => {
+    setUserDetailsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/stats/user-details?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&type=${type}`,
+        {
+          headers: {
+            'X-API-Key': apiKey,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setUserDetails(data.data.users);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load user details:', err);
+    } finally {
+      setUserDetailsLoading(false);
+    }
+  }, [projectId, startDate, endDate, apiKey]);
+
+  // 处理卡片点击
+  const handleCardClick = useCallback((type: 'uv' | 'active') => {
+    setSelectedCard(type);
+    loadUserDetails(type);
+  }, [loadUserDetails]);
+
+  // 关闭详细信息面板
+  const handleClosePanel = useCallback(() => {
+    setSelectedCard(null);
+    setUserDetails([]);
+  }, []);
 
   // 初始化
   useEffect(() => {
@@ -427,226 +471,315 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-7xl mx-auto">
-        {/* 头部 */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{projectName || 'Dashboard'}</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              {getCurrentMonthStr()}
-            </p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {loading ? 'Loading...' : 'Refresh'}
-            </button>
-            <a
-              href="/"
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
-            >
-              Back to Projects
-            </a>
+      <div className="flex gap-8">
+        {/* 主内容区域 */}
+        <div className="flex-1">
+          <div className="max-w-6xl mx-auto">
+            {/* 头部 */}
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">{projectName || 'Dashboard'}</h1>
+                <p className="text-gray-500 text-sm mt-1">
+                  {getCurrentMonthStr()}
+                </p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {loading ? 'Loading...' : 'Refresh'}
+                </button>
+                <a
+                  href="/"
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Back to Projects
+                </a>
+              </div>
+            </div>
+
+            {/* 错误信息 */}
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                {error}
+              </div>
+            )}
+
+            {/* 加载中 */}
+            {loading && !stats && (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-4 text-gray-500">Loading stats...</p>
+              </div>
+            )}
+
+            {/* 统计卡片和图表 */}
+            {stats && (
+              <>
+                {/* 统计卡片 */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                  {/* 注册用户数（外部 API） */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">
+                      {stats.externalUserStats?.totalUsers ?? '-'}
+                    </p>
+                    {stats.externalUserStats && (
+                      <div className="mt-2 text-xs text-gray-500 space-y-1">
+                        {stats.externalUserStats.newUsersToday !== undefined && (
+                          <p>Today: +{stats.externalUserStats.newUsersToday}</p>
+                        )}
+                        {stats.externalUserStats.newUsersThisWeek !== undefined && (
+                          <p>This Week: +{stats.externalUserStats.newUsersThisWeek}</p>
+                        )}
+                        {stats.externalUserStats.newUsersThisMonth !== undefined && (
+                          <p>This Month: +{stats.externalUserStats.newUsersThisMonth}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 当日 PV */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-sm font-medium text-gray-500">Page Views</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">
+                      {stats.todayPV ?? '-'}
+                    </p>
+                  </div>
+
+                  {/* 每日访问用户数（UV） - 可点击 */}
+                  <div 
+                    className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200 border-2 border-transparent hover:border-green-500"
+                    onClick={() => handleCardClick('uv')}
+                  >
+                    <h3 className="text-sm font-medium text-gray-500">Unique Visitors</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">
+                      {stats.uniqueVisitorsByDay?.length > 0 ? stats.uniqueVisitorsByDay[stats.uniqueVisitorsByDay.length - 1]?.count : '-'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">Click for details</p>
+                  </div>
+
+                  {/* 每日登录用户数 - 可点击 */}
+                  <div 
+                    className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200 border-2 border-transparent hover:border-purple-500"
+                    onClick={() => handleCardClick('active')}
+                  >
+                    <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">
+                      {(() => {
+                        const dailyActiveUsers = stats.externalUserStats?.dailyActiveUsers;
+                        if (!dailyActiveUsers || dailyActiveUsers.length === 0) return '0';
+                        
+                        // 查找当天的数据
+                        const todayStr = getTodayStr();
+                        const todayData = dailyActiveUsers.find(item => item.date === todayStr);
+                        return todayData?.count ?? 0;
+                      })()}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">Click for details</p>
+                  </div>
+                </div>
+
+                {/* 图表 - 每日访问用户数和每日登录用户数 */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* 每日访问用户数（PV）柱状图 */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Page Views ({getCurrentMonthStr()})</h3>
+                    {stats.viewsByDay && stats.viewsByDay.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={filterCurrentMonth(stats.viewsByDay)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="date" 
+                            tickFormatter={formatShortDate}
+                            ticks={getXAxisTicks(filterCurrentMonth(stats.viewsByDay))}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip content={(props) => <CustomTooltip {...props} color="#3B82F6" />} />
+                          <Legend />
+                          <Bar dataKey="count" fill="#3B82F6" name="Page Views" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+                        No data available for this period
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 每日独立访客数（UV）柱状图 */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
+                    {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={filterCurrentMonth(stats.uniqueVisitorsByDay)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="date" 
+                            tickFormatter={formatShortDate}
+                            ticks={getXAxisTicks(filterCurrentMonth(stats.uniqueVisitorsByDay))}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip content={(props) => <CustomTooltip {...props} color="#10B981" />} />
+                          <Legend />
+                          <Bar dataKey="count" fill="#10B981" name="Unique Visitors" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+                        No data available for this period
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 每日登录用户数柱状图 */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users ({getCurrentMonthStr()})</h3>
+                    {stats.externalUserStats?.dailyActiveUsers ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={fillMissingDates(
+                          filterCurrentMonth(stats.externalUserStats.dailyActiveUsers),
+                          startDate,
+                          endDate
+                        )}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="date" 
+                            tickFormatter={formatShortDate}
+                            ticks={getXAxisTicks(fillMissingDates(
+                              filterCurrentMonth(stats.externalUserStats.dailyActiveUsers),
+                              startDate,
+                              endDate
+                            ))}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip content={(props) => <CustomTooltip {...props} color="#8B5CF6" />} />
+                          <Legend />
+                          <Bar dataKey="count" fill="#8B5CF6" name="Active Users" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+                        No data available for this period
+                      </div>
+                    )}
+                  </div>
+
+                  {/* IP 地址解析饼状图 - 显示已登录用户的地区分布 */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Unique Visitors Locations (Top 10 Regions, {getCurrentMonthStr()})</h3>
+                    {stats.activeUsersByRegion && stats.activeUsersByRegion.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={stats.activeUsersByRegion}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#F59E0B"
+                            dataKey="count"
+                          >
+                            {stats.activeUsersByRegion.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+                        No data available for this period
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* 错误信息 */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
+        {/* 右侧详细信息面板 */}
+        {selectedCard && (
+          <div className="fixed right-0 top-0 h-full w-[600px] bg-white shadow-2xl border-l border-gray-200 overflow-hidden flex flex-col">
+            {/* 面板头部 */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {selectedCard === 'uv' ? 'Unique Visitors' : 'Active Users'}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {userDetails.length} users found
+                </p>
+              </div>
+              <button
+                onClick={handleClosePanel}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 面板内容 */}
+            <div className="flex-1 overflow-auto">
+              {userDetailsLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : userDetails.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  No user data available
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Browser</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Local Time</th>
+                      {selectedCard === 'active' && (
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {userDetails.map((user, index) => (
+                      <tr key={`${user.userId}-${index}`} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900 font-mono">
+                          {user.userId ? `${user.userId.slice(0, 12)}...` : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{user.city}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          <span className="flex items-center gap-1">
+                            <span>{user.deviceIcon}</span>
+                            <span className="text-xs">{user.deviceText}</span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{user.browser}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 font-mono text-xs">{user.localTime}</td>
+                        {selectedCard === 'active' && (
+                          <td className="px-4 py-3 text-sm text-blue-600 max-w-[150px] truncate">
+                            {user.pageUrl || '-'}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
-        )}
-
-        {/* 加载中 */}
-        {loading && !stats && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-500">Loading stats...</p>
-          </div>
-        )}
-
-        {/* 统计卡片和图表 */}
-        {stats && (
-          <>
-            {/* 统计卡片 */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              {/* 注册用户数（外部 API） */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.externalUserStats?.totalUsers ?? '-'}
-                </p>
-                {stats.externalUserStats && (
-                  <div className="mt-2 text-xs text-gray-500 space-y-1">
-                    {stats.externalUserStats.newUsersToday !== undefined && (
-                      <p>Today: +{stats.externalUserStats.newUsersToday}</p>
-                    )}
-                    {stats.externalUserStats.newUsersThisWeek !== undefined && (
-                      <p>This Week: +{stats.externalUserStats.newUsersThisWeek}</p>
-                    )}
-                    {stats.externalUserStats.newUsersThisMonth !== undefined && (
-                      <p>This Month: +{stats.externalUserStats.newUsersThisMonth}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* 当日 PV */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Page Views</h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.todayPV ?? '-'}
-                </p>
-              </div>
-
-              {/* 每日访问用户数（UV） */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Unique Visitors</h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.uniqueVisitorsByDay?.length > 0 ? stats.uniqueVisitorsByDay[stats.uniqueVisitorsByDay.length - 1]?.count : '-'}
-                </p>
-              </div>
-
-              {/* 每日登录用户数 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {(() => {
-                    const dailyActiveUsers = stats.externalUserStats?.dailyActiveUsers;
-                    if (!dailyActiveUsers || dailyActiveUsers.length === 0) return '0';
-                    
-                    // 查找当天的数据
-                    const todayStr = getTodayStr();
-                    const todayData = dailyActiveUsers.find(item => item.date === todayStr);
-                    return todayData?.count ?? 0;
-                  })()}
-                </p>
-              </div>
-            </div>
-
-            {/* 图表 - 每日访问用户数和每日登录用户数 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 每日访问用户数（PV）柱状图 */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Page Views ({getCurrentMonthStr()})</h3>
-              {stats.viewsByDay && stats.viewsByDay.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={filterCurrentMonth(stats.viewsByDay)}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
-                      tickFormatter={formatShortDate}
-                      ticks={getXAxisTicks(filterCurrentMonth(stats.viewsByDay))}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip content={(props) => <CustomTooltip {...props} color="#3B82F6" />} />
-                    <Legend />
-                    <Bar dataKey="count" fill="#3B82F6" name="Page Views" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
-                  No data available for this period
-                </div>
-              )}
-            </div>
-
-            {/* 每日独立访客数（UV）柱状图 */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
-              {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={filterCurrentMonth(stats.uniqueVisitorsByDay)}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
-                      tickFormatter={formatShortDate}
-                      ticks={getXAxisTicks(filterCurrentMonth(stats.uniqueVisitorsByDay))}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip content={(props) => <CustomTooltip {...props} color="#10B981" />} />
-                    <Legend />
-                    <Bar dataKey="count" fill="#10B981" name="Unique Visitors" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
-                  No data available for this period
-                </div>
-              )}
-            </div>
-
-            {/* 每日登录用户数柱状图 */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users ({getCurrentMonthStr()})</h3>
-              {stats.externalUserStats?.dailyActiveUsers ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={fillMissingDates(
-                    filterCurrentMonth(stats.externalUserStats.dailyActiveUsers),
-                    startDate,
-                    endDate
-                  )}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
-                      tickFormatter={formatShortDate}
-                      ticks={getXAxisTicks(fillMissingDates(
-                        filterCurrentMonth(stats.externalUserStats.dailyActiveUsers),
-                        startDate,
-                        endDate
-                      ))}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip content={(props) => <CustomTooltip {...props} color="#8B5CF6" />} />
-                    <Legend />
-                    <Bar dataKey="count" fill="#8B5CF6" name="Active Users" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
-                  No data available for this period
-                </div>
-              )}
-            </div>
-
-            {/* IP 地址解析饼状图 - 显示已登录用户的地区分布 */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Unique Visitors Locations (Top 10 Regions, {getCurrentMonthStr()})</h3>
-              {stats.activeUsersByRegion && stats.activeUsersByRegion.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={stats.activeUsersByRegion}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#F59E0B"
-                      dataKey="count"
-                    >
-                      {stats.activeUsersByRegion.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
-                  No data available for this period
-                </div>
-              )}
-            </div>
-            </div>
-          </>
         )}
       </div>
     </main>
