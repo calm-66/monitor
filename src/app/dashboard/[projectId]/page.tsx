@@ -433,7 +433,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{projectName || 'Dashboard'}</h1>
             <p className="text-gray-500 text-sm mt-1">
-              {startDate} to {endDate}
+              {getCurrentMonthStr()}
             </p>
           </div>
           <div className="flex items-center space-x-4">
