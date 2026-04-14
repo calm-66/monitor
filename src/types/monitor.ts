@@ -30,7 +30,7 @@ export interface Project {
 
 // 事件上报请求体
 export interface EventPayload {
-  eventType: 'pageview' | 'click' | 'custom';
+  eventType: 'pageview' | 'click' | 'custom' | 'login';
   eventName?: string;
   sessionId?: string;
   pageUrl?: string;
@@ -150,4 +150,33 @@ export interface HealthResponse {
   database: 'connected' | 'disconnected';
   responseTime: number;
   timestamp: string;
+}
+
+// 登录统计数据
+export interface LoginStats {
+  totalLogins: number;           // 总登录次数
+  uniqueLoginUsers: number;      // 独立登录用户数
+  loginsByDay: Array<{ date: string; count: number }>; // 每日登录次数
+  uniqueUsersByDay: Array<{ date: string; count: number }>; // 每日独立登录用户数
+  loginsByCity: Array<{ city: string; count: number }>; // 城市分布
+  loginsByDevice: Array<{ deviceType: string; count: number }>; // 设备类型分布
+  loginsByBrowser: Array<{ browser: string; count: number }>; // 浏览器分布
+  loginsByOS: Array<{ os: string; count: number }>; // 操作系统分布
+  recentLogins: Array<{
+    userId: string | null;
+    city: string | null;
+    country: string | null;
+    deviceType: string | null;
+    browser: string | null;
+    os: string | null;
+    createdAt: Date;
+    username?: string;
+    usOnlyUserId?: string;
+  }>;
+}
+
+// 登录统计 API 响应
+export interface LoginStatsResponse {
+  success: boolean;
+  data: LoginStats;
 }

@@ -4,40 +4,11 @@ import { resolveGeoIP, parseUserAgent } from '@/lib/geoip';
 import { getClientIP, formatAsBeijingDate, log } from '@/lib/utils';
 import { EventPayload } from '@/types/monitor';
 
-// CORS 配置
-function getCorsHeaders(origin?: string) {
-  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').filter(Boolean) || ['*'];
-  const allowedOrigin = allowedOrigins.includes('*') || (origin && allowedOrigins.includes(origin))
-    ? origin || '*'
-    : allowedOrigins[0] || '*';
-  
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Project-ID',
-    'Access-Control-Max-Age': '86400',
-  };
-}
-
-// 处理 OPTIONS 预检请求
-export async function OPTIONS(request: NextRequest) {
-  const origin = request.headers.get('origin') || undefined;
-  const corsHeaders = getCorsHeaders(origin);
-  
-  return new Response(null, {
-    status: 204,
-    headers: corsHeaders
-  });
-}
-
 /**
  * POST /api/events
  * 接收事件上报（支持批量）
  */
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get('origin') || undefined;
-  const corsHeaders = getCorsHeaders(origin);
-  
   try {
     // 验证 API Key
     const apiKey = request.headers.get('X-API-Key');
@@ -54,15 +25,15 @@ export async function POST(request: NextRequest) {
       console.log('[API /events] Missing API Key');
       return NextResponse.json(
         { success: false, error: 'Missing X-API-Key header' },
-        { status: 401, headers: corsHeaders }
+        { status: 401 }
       );
     }
     
     if (!projectId) {
       console.log('[API /events] Missing Project ID');
       return NextResponse.json(
-        { success: false, error: 'Missing X-Project-ID header' },
-        { status: 401, headers: corsHeaders }
+        { success: false, error: 'Missing Project ID' },
+        { status: 401 }
       );
     }
     
@@ -80,7 +51,7 @@ export async function POST(request: NextRequest) {
       console.log('[API /events] Project not found or inactive:', projectId);
       return NextResponse.json(
         { success: false, error: 'Invalid API Key or Project ID' },
-        { status: 401, headers: corsHeaders }
+        { status: 401 }
       );
     }
     
@@ -93,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (events.length === 0) {
       return NextResponse.json(
         { success: false, error: 'No events provided' },
-        { status: 400, headers: corsHeaders }
+        { status: 400 }
       );
     }
     
@@ -102,7 +73,7 @@ export async function POST(request: NextRequest) {
     if (events.length > MAX_BATCH_SIZE) {
       return NextResponse.json(
         { success: false, error: `Batch size exceeds limit of ${MAX_BATCH_SIZE}` },
-        { status: 400, headers: corsHeaders }
+        { status: 400 }
       );
     }
     
@@ -190,13 +161,13 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(
       { success: true, data: { received: events.length } },
-      { status: 200, headers: corsHeaders }
+      { status: 200 }
     );
   } catch (error) {
     log('error', 'Failed to process events', error);
     return NextResponse.json(
       { success: false, error: 'Failed to process events' },
-      { status: 500, headers: corsHeaders }
+      { status: 500 }
     );
   }
 }
