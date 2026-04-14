@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       console.log('[API /events] Missing API Key');
       return NextResponse.json(
         { success: false, error: 'Missing X-API-Key header' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
     
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       console.log('[API /events] Missing Project ID');
       return NextResponse.json(
         { success: false, error: 'Missing Project ID' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
     
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       console.log('[API /events] Project not found or inactive:', projectId);
       return NextResponse.json(
         { success: false, error: 'Invalid API Key or Project ID' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
     
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     if (events.length === 0) {
       return NextResponse.json(
         { success: false, error: 'No events provided' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
     
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     if (events.length > MAX_BATCH_SIZE) {
       return NextResponse.json(
         { success: false, error: `Batch size exceeds limit of ${MAX_BATCH_SIZE}` },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
     
