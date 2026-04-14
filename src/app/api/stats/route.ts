@@ -3,6 +3,21 @@ import prisma from '@/lib/prisma';
 import { parseDateRange, log, formatAsBeijingDate } from '@/lib/utils';
 import { StatsResponse } from '@/types/monitor';
 
+// 简单的 CORS 头（允许所有来源）
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Project-ID',
+};
+
+// 处理 OPTIONS 预检请求
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+}
+
 /**
  * GET /api/stats
  * 获取统计数据
@@ -317,12 +332,12 @@ export async function GET(request: NextRequest) {
       activeUsersByRegion
     };
     
-    return NextResponse.json({ success: true, data: stats });
+    return NextResponse.json({ success: true, data: stats }, { headers: corsHeaders });
   } catch (error) {
     log('error', 'Failed to fetch stats', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch stats' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

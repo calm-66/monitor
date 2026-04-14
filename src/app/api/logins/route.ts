@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { parseDateRange, log, formatAsBeijingDate } from '@/lib/utils';
 
+// 简单的 CORS 头（允许所有来源）
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Project-ID',
+};
+
+// 处理 OPTIONS 预检请求
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+}
+
 /**
  * GET /api/logins
  * 获取登录统计数据（基于 login 事件）
@@ -306,12 +321,12 @@ export async function GET(request: NextRequest) {
       recentLogins
     };
     
-    return NextResponse.json({ success: true, data: stats });
+    return NextResponse.json({ success: true, data: stats }, { headers: corsHeaders });
   } catch (error) {
     log('error', 'Failed to fetch login stats', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch login stats' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

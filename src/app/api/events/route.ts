@@ -4,6 +4,21 @@ import { resolveGeoIP, parseUserAgent } from '@/lib/geoip';
 import { getClientIP, formatAsBeijingDate, log } from '@/lib/utils';
 import { EventPayload } from '@/types/monitor';
 
+// 简单的 CORS 头（允许所有来源）
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Project-ID',
+};
+
+// 处理 OPTIONS 预检请求
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+}
+
 /**
  * POST /api/events
  * 接收事件上报（支持批量）
@@ -161,13 +176,13 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(
       { success: true, data: { received: events.length } },
-      { status: 200 }
+      { status: 200, headers: corsHeaders }
     );
   } catch (error) {
     log('error', 'Failed to process events', error);
     return NextResponse.json(
       { success: false, error: 'Failed to process events' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
