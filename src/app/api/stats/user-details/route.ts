@@ -66,36 +66,24 @@ function convertToLocalTime(utcDate: Date, offset: number): string {
 }
 
 /**
- * 格式化设备显示
+ * 简化设备分类：PC / iPhone / Android
  */
-function formatDevice(deviceType: string | null, os: string | null): { icon: string; text: string } {
-  const type = deviceType?.toLowerCase() || '';
+function categorizeDevice(deviceType: string | null, os: string | null): string {
   const osLower = os?.toLowerCase() || '';
-
-  let icon = '🖥️';
-  let text = 'Desktop';
-
-  if (type === 'mobile') {
-    icon = '📱';
-    if (osLower.includes('iphone') || osLower.includes('ios')) {
-      text = 'Mobile (iPhone)';
-    } else if (osLower.includes('android')) {
-      text = 'Mobile (Android)';
-    } else {
-      text = 'Mobile';
-    }
-  } else if (type === 'tablet') {
-    icon = '📱';
-    text = 'Tablet';
-  }
-
-  return { icon, text };
+  const type = deviceType?.toLowerCase() || '';
+  
+  if (type === 'desktop') return 'PC';
+  if (osLower.includes('iphone') || osLower.includes('ios')) return 'iPhone';
+  if (osLower.includes('android')) return 'Android';
+  if (type === 'mobile') return 'Mobile';
+  if (type === 'tablet') return 'Tablet';
+  return 'Other';
 }
 
 /**
  * GET /api/stats/user-details
  * 获取用户详细信息列表
- * 查询参数：projectId, startDate, endDate, type (uv/active)
+ * 查询参数：projectId, startDate, endDate, type (uv/active), date (可选，指定日期)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -104,6 +92,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
     const type = searchParams.get('type') || 'uv'; // 'uv' 或 'active'
+    const date = searchParams.get('date'); // 可选，指定具体日期
 
     // 验证必填参数
     if (!projectId) {
@@ -139,11 +128,21 @@ export async function GET(request: NextRequest) {
     }
 
     // 解析日期范围
-    const { start, end } = parseDateRange(startDate, endDate);
+    let start: Date;
+    let end: Date;
+    
+    if (date) {
+      // 如果指定了日期，使用该日期的开始和结束
+      start = new Date(`${date}T00:00:00Z`);
+      end = new Date(`${date}T23:59:59Z`);
+    } else {
+      // 否则使用 startDate 和 endDate
+      const parsed = parseDateRange(startDate, endDate);
+      start = parsed.start;
+      end = parsed.end;
+    }
 
-    // 查询条件：根据类型区分
-    // UV: 所有有 userId 的事件（去重）
-    // Active: 所有有 userId 的事件（去重），额外包含 pageUrl
+    // 查询条件
     const whereCondition = {
       projectId,
       createdAt: {
@@ -184,24 +183,45 @@ export async function GET(request: NextRequest) {
     const userDetails = Array.from(userMap.values()).map(event => {
       const offset = getTimezoneOffset(event.city, event.country);
       const localTime = convertToLocalTime(event.createdAt, offset);
-      const device = formatDevice(event.deviceType, event.os);
+      const device = categorizeDevice(event.deviceType, event.os);
 
       return {
         userId: event.userId,
         city: event.city || event.country || 'Unknown',
-        deviceIcon: device.icon,
-        deviceText: device.text,
+        deviceType: device,
         browser: event.browser || 'Unknown',
         localTime,
         pageUrl: event.pageUrl
       };
     });
 
+    // 计算城市分布
+    const cityMap = new Map<string, number>();
+    userDetails.forEach(user => {
+      const city = user.city || 'Unknown';
+      cityMap.set(city, (cityMap.get(city) || 0) + 1);
+    });
+    const cityDistribution = Array.from(cityMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // 计算设备分布
+    const deviceMap = new Map<string, number>();
+    userDetails.forEach(user => {
+      const device = user.deviceType || 'Other';
+      deviceMap.set(device, (deviceMap.get(device) || 0) + 1);
+    });
+    const deviceDistribution = Array.from(deviceMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
     return NextResponse.json({ 
       success: true, 
       data: {
         users: userDetails,
-        total: userDetails.length
+        total: userDetails.length,
+        cityDistribution,
+        deviceDistribution
       }
     });
   } catch (error) {

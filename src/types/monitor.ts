@@ -114,11 +114,16 @@ export interface IpLimitStats {
 export interface UserDetail {
   userId: string | null;
   city: string;
-  deviceIcon: string;
-  deviceText: string;
+  deviceType: string; // PC / iPhone / Android / Mobile / Tablet / Other
   browser: string;
   localTime: string;
   pageUrl: string | null;
+}
+
+// 分布数据（用于饼图）
+export interface DistributionData {
+  name: string;
+  count: number;
 }
 
 // 用户详细信息 API 响应
@@ -127,6 +132,8 @@ export interface UserDetailsResponse {
   data: {
     users: UserDetail[];
     total: number;
+    cityDistribution: DistributionData[];
+    deviceDistribution: DistributionData[];
   };
 }
 

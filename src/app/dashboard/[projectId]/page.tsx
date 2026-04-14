@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { StatsResponse, IpLimitStats, Project, UserDetail } from '@/types/monitor';
+import { StatsResponse, IpLimitStats, Project, UserDetail, DistributionData } from '@/types/monitor';
 import {
   LineChart,
   Line,
@@ -34,6 +34,16 @@ const COLORS = [
   '#A855F7', // 紫罗兰色
   '#D946EF', // 紫红色
 ];
+
+// 饼图颜色（PC/iPhone/Android）
+const DEVICE_COLORS = {
+  'PC': '#3B82F6',
+  'iPhone': '#EC4899',
+  'Android': '#10B981',
+  'Mobile': '#F59E0B',
+  'Tablet': '#8B5CF6',
+  'Other': '#6B7280',
+};
 
 // 获取当前月份的字符串（如 "April 2026"）
 function getCurrentMonthStr(): string {
@@ -153,6 +163,20 @@ function CustomTooltip({ active, payload, label, color }: CustomTooltipProps) {
   return null;
 }
 
+// 饼图自定义 Tooltip
+function PieTooltip({ active, payload }: { active?: boolean; payload?: unknown[] }) {
+  if (active && payload && payload.length > 0) {
+    const item = payload[0] as { name?: string; value?: number };
+    return (
+      <div className="bg-white p-3 border border-gray-200 rounded shadow-md">
+        <p className="font-semibold">{item.name}</p>
+        <p className="text-sm text-gray-600">Count: {item.value}</p>
+      </div>
+    );
+  }
+  return null;
+}
+
 /**
  * 根据项目 domain 构建 UsOnly stats API URL
  * 处理用户可能输入的 https://、http://、/ 等前缀
@@ -198,7 +222,10 @@ export default function DashboardPage() {
 
   // 用户详细信息面板状态
   const [selectedCard, setSelectedCard] = useState<'uv' | 'active' | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
+  const [cityDistribution, setCityDistribution] = useState<DistributionData[]>([]);
+  const [deviceDistribution, setDeviceDistribution] = useState<DistributionData[]>([]);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
 
   // 日期范围结束
@@ -295,22 +322,26 @@ export default function DashboardPage() {
   }, [projectId, startDate, endDate, apiKey]);
 
   // 加载用户详细信息
-  const loadUserDetails = useCallback(async (type: 'uv' | 'active') => {
+  const loadUserDetails = useCallback(async (type: 'uv' | 'active', date?: string) => {
     setUserDetailsLoading(true);
     try {
-      const response = await fetch(
-        `/api/stats/user-details?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&type=${type}`,
-        {
-          headers: {
-            'X-API-Key': apiKey,
-          },
-        }
-      );
+      let url = `/api/stats/user-details?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&type=${type}`;
+      if (date) {
+        url += `&date=${date}`;
+      }
+      
+      const response = await fetch(url, {
+        headers: {
+          'X-API-Key': apiKey,
+        },
+      });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
           setUserDetails(data.data.users);
+          setCityDistribution(data.data.cityDistribution || []);
+          setDeviceDistribution(data.data.deviceDistribution || []);
         }
       }
     } catch (err) {
@@ -320,16 +351,28 @@ export default function DashboardPage() {
     }
   }, [projectId, startDate, endDate, apiKey]);
 
-  // 处理卡片点击
+  // 处理卡片点击 - 显示当天数据
   const handleCardClick = useCallback((type: 'uv' | 'active') => {
+    const today = getTodayStr();
     setSelectedCard(type);
-    loadUserDetails(type);
+    setSelectedDate(today);
+    loadUserDetails(type, today);
+  }, [loadUserDetails]);
+
+  // 处理柱状图点击
+  const handleBarClick = useCallback((type: 'uv' | 'active', date: string) => {
+    setSelectedCard(type);
+    setSelectedDate(date);
+    loadUserDetails(type, date);
   }, [loadUserDetails]);
 
   // 关闭详细信息面板
   const handleClosePanel = useCallback(() => {
     setSelectedCard(null);
+    setSelectedDate(null);
     setUserDetails([]);
+    setCityDistribution([]);
+    setDeviceDistribution([]);
   }, []);
 
   // 初始化
@@ -468,6 +511,18 @@ export default function DashboardPage() {
       </main>
     );
   }
+
+  // 获取面板标题
+  const getPanelTitle = () => {
+    const baseTitle = selectedCard === 'uv' ? 'Unique Visitors' : 'Active Users';
+    if (!selectedDate) return baseTitle;
+    
+    const today = getTodayStr();
+    if (selectedDate === today) {
+      return `${baseTitle} - Today (${selectedDate})`;
+    }
+    return `${baseTitle} - ${selectedDate}`;
+  };
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
@@ -610,7 +665,7 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {/* 每日独立访客数（UV）柱状图 */}
+                  {/* 每日独立访客数（UV）柱状图 - 可点击 */}
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
                     {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
@@ -626,7 +681,13 @@ export default function DashboardPage() {
                           <YAxis allowDecimals={false} />
                           <Tooltip content={(props) => <CustomTooltip {...props} color="#10B981" />} />
                           <Legend />
-                          <Bar dataKey="count" fill="#10B981" name="Unique Visitors" />
+                          <Bar 
+                            dataKey="count" 
+                            fill="#10B981" 
+                            name="Unique Visitors"
+                            onClick={(data) => handleBarClick('uv', data.date)}
+                            style={{ cursor: 'pointer' }}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
@@ -636,7 +697,7 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {/* 每日登录用户数柱状图 */}
+                  {/* 每日登录用户数柱状图 - 可点击 */}
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users ({getCurrentMonthStr()})</h3>
                     {stats.externalUserStats?.dailyActiveUsers ? (
@@ -660,7 +721,13 @@ export default function DashboardPage() {
                           <YAxis allowDecimals={false} />
                           <Tooltip content={(props) => <CustomTooltip {...props} color="#8B5CF6" />} />
                           <Legend />
-                          <Bar dataKey="count" fill="#8B5CF6" name="Active Users" />
+                          <Bar 
+                            dataKey="count" 
+                            fill="#8B5CF6" 
+                            name="Active Users"
+                            onClick={(data) => handleBarClick('active', data.date)}
+                            style={{ cursor: 'pointer' }}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
@@ -708,12 +775,12 @@ export default function DashboardPage() {
 
         {/* 右侧详细信息面板 */}
         {selectedCard && (
-          <div className="fixed right-0 top-0 h-full w-[600px] bg-white shadow-2xl border-l border-gray-200 overflow-hidden flex flex-col">
+          <div className="fixed right-0 top-0 h-full w-[700px] bg-white shadow-2xl border-l border-gray-200 overflow-hidden flex flex-col z-50">
             {/* 面板头部 */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200 flex-shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  {selectedCard === 'uv' ? 'Unique Visitors' : 'Active Users'}
+                  {getPanelTitle()}
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
                   {userDetails.length} users found
@@ -740,43 +807,109 @@ export default function DashboardPage() {
                   No user data available
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Browser</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Local Time</th>
-                      {selectedCard === 'active' && (
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page</th>
+                <div className="p-6">
+                  {/* 表格区域 */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">User List</h3>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Browser</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Local Time</th>
+                            {selectedCard === 'active' && (
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page</th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {userDetails.map((user, index) => (
+                            <tr key={`${user.userId}-${index}`} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm text-gray-900 font-mono">
+                                {user.userId ? `${user.userId.slice(0, 10)}...` : '-'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{user.city}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{user.deviceType}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{user.browser}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 font-mono text-xs">{user.localTime}</td>
+                              {selectedCard === 'active' && (
+                                <td className="px-4 py-3 text-sm text-blue-600 max-w-[120px] truncate">
+                                  {user.pageUrl || '-'}
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 饼图区域 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* City 分布饼图 */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">City Distribution</h3>
+                      {cityDistribution.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <PieChart>
+                            <Pie
+                              data={cityDistribution}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={60}
+                              fill="#3B82F6"
+                              dataKey="count"
+                            >
+                              {cityDistribution.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={PieTooltip} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
+                          No city data
+                        </div>
                       )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {userDetails.map((user, index) => (
-                      <tr key={`${user.userId}-${index}`} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900 font-mono">
-                          {user.userId ? `${user.userId.slice(0, 12)}...` : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{user.city}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          <span className="flex items-center gap-1">
-                            <span>{user.deviceIcon}</span>
-                            <span className="text-xs">{user.deviceText}</span>
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{user.browser}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900 font-mono text-xs">{user.localTime}</td>
-                        {selectedCard === 'active' && (
-                          <td className="px-4 py-3 text-sm text-blue-600 max-w-[150px] truncate">
-                            {user.pageUrl || '-'}
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </div>
+
+                    {/* Device 分布饼图 */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Device Distribution</h3>
+                      {deviceDistribution.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <PieChart>
+                            <Pie
+                              data={deviceDistribution}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={60}
+                              fill="#3B82F6"
+                              dataKey="count"
+                            >
+                              {deviceDistribution.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={DEVICE_COLORS[entry.name as keyof typeof DEVICE_COLORS] || COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={PieTooltip} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
+                          No device data
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
