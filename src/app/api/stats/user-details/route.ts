@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { parseDateRange, log } from '@/lib/utils';
 
+// 简单的 CORS 头（允许所有来源）
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Project-ID',
+};
+
+// 处理 OPTIONS 预检请求
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+}
+
 /**
  * 时区偏移映射（小时）
  * 根据城市/国家推断时区偏移
@@ -142,8 +157,9 @@ export async function GET(request: NextRequest) {
       end = parsed.end;
     }
 
-    // 查询条件
-    const whereCondition = {
+    // 查询条件 - 根据 type 参数区分
+    // type='active' 时只查询 login 事件，type='uv' 时查询所有事件
+    const whereCondition: any = {
       projectId,
       createdAt: {
         gte: start,
@@ -151,6 +167,11 @@ export async function GET(request: NextRequest) {
       },
       userId: { not: null }
     };
+    
+    // 当 type='active' 时，只查询 eventName='login' 的事件
+    if (type === 'active') {
+      whereCondition.eventName = 'login';
+    }
 
     // 获取所有带 userId 的事件记录
     const events = await prisma.event.findMany({
@@ -223,12 +244,12 @@ export async function GET(request: NextRequest) {
         cityDistribution,
         deviceDistribution
       }
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     log('error', 'Failed to fetch user details', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch user details' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
