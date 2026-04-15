@@ -99,8 +99,20 @@ export async function POST(request: NextRequest) {
     const firstEvent = events[0];
     const deviceInfo = parseUserAgent(firstEvent?.userAgent);
     
+    // 先解析所有 IP 的地理位置（并行处理）
+    const geoResults = await Promise.all(
+      events.map((event: EventPayload) => {
+        const eventIP = event.ipAddress || headerClientIP;
+        if (eventIP) {
+          return resolveGeoIP(eventIP);
+        }
+        // 没有 IP 地址，返回失败状态
+        return Promise.resolve({ status: 'fail' as const, message: 'no IP', country: null, region: null, city: null, latitude: null, longitude: null });
+      })
+    );
+    
     // 准备批量插入的数据（使用前端发送的当地时间）
-    const eventsToCreate = events.map((event: EventPayload) => {
+    const eventsToCreate = events.map((event: EventPayload, index: number) => {
       // 如果前端提供了 createdAt，使用它；否则使用服务器当前时间
       let createdAt: Date;
       if (event.createdAt) {
@@ -113,20 +125,7 @@ export async function POST(request: NextRequest) {
       
       // 优先使用 payload 中的 ipAddress 字段（来自 UsOnly 传递的客户端 IP）
       const eventIP = event.ipAddress || headerClientIP;
-      
-      // 解析 IP 地理位置（带限流处理）
-      let geoLocation: any = { status: 'success', country: null, region: null, city: null, latitude: null, longitude: null };
-      let isRateLimited = false;
-      let isFailed = false;
-      
-      if (eventIP) {
-        geoLocation = await resolveGeoIP(eventIP);
-        isRateLimited = geoLocation.status === 'fail' && geoLocation.message === 'rate limited';
-        isFailed = geoLocation.status === 'fail' && geoLocation.message !== 'rate limited';
-      } else {
-        // 没有 IP 地址，标记为 Unknown
-        isFailed = true;
-      }
+      const geoLocation = geoResults[index];
       
       return {
         projectId,
@@ -159,6 +158,23 @@ export async function POST(request: NextRequest) {
       data: eventsToCreate
     });
     
+    // 统计 IP 解析结果
+    let totalRateLimited = 0;
+    let totalFailed = 0;
+    let totalSuccessful = 0;
+    
+    geoResults.forEach(geoLocation => {
+      if (geoLocation.status === 'fail') {
+        if (geoLocation.message === 'rate limited') {
+          totalRateLimited++;
+        } else {
+          totalFailed++;
+        }
+      } else {
+        totalSuccessful++;
+      }
+    });
+    
     // 更新 IP 限制追踪记录（使用北京时间）
     const today = formatAsBeijingDate(new Date());
     await prisma.ipLimitTracker.upsert({
@@ -170,21 +186,26 @@ export async function POST(request: NextRequest) {
       },
       update: {
         totalRequests: { increment: events.length },
-        successfulResolves: isRateLimited || isFailed ? undefined : { increment: events.length },
-        rateLimitedCount: isRateLimited ? { increment: events.length } : undefined,
-        failedCount: isFailed ? { increment: events.length } : undefined,
+        successfulResolves: totalRateLimited || totalFailed ? undefined : { increment: events.length },
+        rateLimitedCount: totalRateLimited ? { increment: totalRateLimited } : undefined,
+        failedCount: totalFailed ? { increment: totalFailed } : undefined,
       },
       create: {
         projectId,
         date: today,
         totalRequests: events.length,
-        successfulResolves: isRateLimited || isFailed ? 0 : events.length,
-        rateLimitedCount: isRateLimited ? events.length : 0,
-        failedCount: isFailed ? events.length : 0,
+        successfulResolves: totalRateLimited || totalFailed ? 0 : events.length,
+        rateLimitedCount: totalRateLimited,
+        failedCount: totalFailed,
       }
     });
     
-    log('info', `Events received: ${events.length}`, { projectId, isRateLimited, isFailed });
+    log('info', `Events received: ${events.length}`, { 
+      projectId, 
+      successfulResolves: totalSuccessful,
+      rateLimitedCount: totalRateLimited,
+      failedCount: totalFailed
+    });
     
     return NextResponse.json(
       { success: true, data: { received: events.length } },

@@ -200,11 +200,25 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // 解析页面路径（只保留 pathname，不包含域名）
+    function parsePagePath(url: string | null): string {
+      if (!url) return '-';
+      try {
+        // 尝试解析 URL，只返回 pathname 部分
+        const parsed = new URL(url);
+        return parsed.pathname;
+      } catch {
+        // 如果 URL 格式无效，返回原始字符串或 '-'
+        return url || '-';
+      }
+    }
+
     // 转换为响应格式
     const userDetails = Array.from(userMap.values()).map(event => {
       const offset = getTimezoneOffset(event.city, event.country);
       const localTime = convertToLocalTime(event.createdAt, offset);
       const device = categorizeDevice(event.deviceType, event.os);
+      const pagePath = parsePagePath(event.pageUrl);
 
       return {
         userId: event.userId,
@@ -212,7 +226,7 @@ export async function GET(request: NextRequest) {
         deviceType: device,
         browser: event.browser || 'Unknown',
         localTime,
-        pageUrl: event.pageUrl
+        pageUrl: pagePath
       };
     });
 
@@ -236,13 +250,26 @@ export async function GET(request: NextRequest) {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
+    // 计算页面路径分布（仅针对 active 类型）
+    const pageMap = new Map<string, number>();
+    if (type === 'active') {
+      userDetails.forEach(user => {
+        const page = user.pageUrl || '-';
+        pageMap.set(page, (pageMap.get(page) || 0) + 1);
+      });
+    }
+    const pageDistribution = Array.from(pageMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
     return NextResponse.json({ 
       success: true, 
       data: {
         users: userDetails,
         total: userDetails.length,
         cityDistribution,
-        deviceDistribution
+        deviceDistribution,
+        pageDistribution: type === 'active' ? pageDistribution : undefined
       }
     }, { headers: corsHeaders });
   } catch (error) {

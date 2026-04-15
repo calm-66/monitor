@@ -177,6 +177,63 @@ function PieTooltip({ active, payload }: { active?: boolean; payload?: unknown[]
   return null;
 }
 
+// 饼图标签渲染函数 - 修复单数据显示遮挡问题
+interface PieLabelProps {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  percent: number;
+  name: string;
+  index: number;
+  payload: { value: number };
+}
+
+function renderPieLabel(props: PieLabelProps) {
+  const { cx, cy, midAngle, innerRadius, outerRadius, percent, name, payload } = props;
+  const radius = (innerRadius + outerRadius) / 2;
+  
+  // 计算标签位置
+  const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
+  const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
+  
+  // 判断是否只有一个数据项（100%）
+  const isSingleData = percent === 1;
+  
+  // 单数据时将标签放在圆心位置，使用白色文字增加对比度
+  if (isSingleData) {
+    return (
+      <text
+        x={cx}
+        y={cy}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="white"
+        fontWeight="bold"
+        style={{ textShadow: '0px 0px 3px rgba(0,0,0,0.5)' }}
+      >
+        {`${name}: ${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  }
+  
+  // 多数据时使用默认位置
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="white"
+      textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="middle"
+      fontWeight="bold"
+      style={{ textShadow: '0px 0px 3px rgba(0,0,0,0.5)' }}
+    >
+      {`${name}: ${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+}
+
 /**
  * 根据项目 domain 构建 UsOnly stats API URL
  * 处理用户可能输入的 https://、http://、/ 等前缀
@@ -226,6 +283,7 @@ export default function DashboardPage() {
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [cityDistribution, setCityDistribution] = useState<DistributionData[]>([]);
   const [deviceDistribution, setDeviceDistribution] = useState<DistributionData[]>([]);
+  const [pageDistribution, setPageDistribution] = useState<DistributionData[]>([]);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
 
   // 日期范围结束
@@ -342,6 +400,7 @@ export default function DashboardPage() {
           setUserDetails(data.data.users);
           setCityDistribution(data.data.cityDistribution || []);
           setDeviceDistribution(data.data.deviceDistribution || []);
+          setPageDistribution(data.data.pageDistribution || []);
         }
       }
     } catch (err) {
@@ -373,6 +432,7 @@ export default function DashboardPage() {
     setUserDetails([]);
     setCityDistribution([]);
     setDeviceDistribution([]);
+    setPageDistribution([]);
   }, []);
 
   // 初始化
@@ -848,7 +908,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* 饼图区域 */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     {/* City 分布饼图 */}
                     <div className="border border-gray-200 rounded-lg p-4">
                       <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">City Distribution</h3>
@@ -860,7 +920,7 @@ export default function DashboardPage() {
                               cx="50%"
                               cy="50%"
                               labelLine={false}
-                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              label={renderPieLabel}
                               outerRadius={60}
                               fill="#3B82F6"
                               dataKey="count"
@@ -890,7 +950,7 @@ export default function DashboardPage() {
                               cx="50%"
                               cy="50%"
                               labelLine={false}
-                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              label={renderPieLabel}
                               outerRadius={60}
                               fill="#3B82F6"
                               dataKey="count"
@@ -908,6 +968,32 @@ export default function DashboardPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* Page 分布饼图（仅 Active Users 显示） */}
+                    {selectedCard === 'active' && pageDistribution.length > 0 && (
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Page Distribution</h3>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <PieChart>
+                            <Pie
+                              data={pageDistribution}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={renderPieLabel}
+                              outerRadius={60}
+                              fill="#3B82F6"
+                              dataKey="count"
+                            >
+                              {pageDistribution.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={PieTooltip} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -135,6 +135,7 @@ export interface UserDetailsResponse {
     total: number;
     cityDistribution: DistributionData[];
     deviceDistribution: DistributionData[];
+    pageDistribution?: DistributionData[]; // 页面路径分布
   };
 }
 
