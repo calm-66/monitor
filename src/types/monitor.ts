@@ -37,6 +37,7 @@ export interface EventPayload {
   pageTitle?: string;
   referrer?: string;
   userId?: string;
+  ipAddress?: string; // 可选的客户端 IP 地址（由 UsOnly 传递）
   userAgent?: string;
   screenWidth?: number;
   screenHeight?: number;

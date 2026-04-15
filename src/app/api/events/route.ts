@@ -92,13 +92,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 获取客户端 IP
-    const clientIP = getClientIP(request.headers);
-    
-    // 解析 IP 地理位置（带限流处理）
-    const geoLocation = await resolveGeoIP(clientIP || '');
-    const isRateLimited = geoLocation.status === 'fail' && geoLocation.message === 'rate limited';
-    const isFailed = geoLocation.status === 'fail' && geoLocation.message !== 'rate limited';
+    // 获取客户端 IP（优先使用 payload 中的 ipAddress 字段）
+    const headerClientIP = getClientIP(request.headers);
     
     // 解析 User-Agent
     const firstEvent = events[0];
@@ -116,6 +111,23 @@ export async function POST(request: NextRequest) {
         createdAt = new Date();
       }
       
+      // 优先使用 payload 中的 ipAddress 字段（来自 UsOnly 传递的客户端 IP）
+      const eventIP = event.ipAddress || headerClientIP;
+      
+      // 解析 IP 地理位置（带限流处理）
+      let geoLocation: any = { status: 'success', country: null, region: null, city: null, latitude: null, longitude: null };
+      let isRateLimited = false;
+      let isFailed = false;
+      
+      if (eventIP) {
+        geoLocation = await resolveGeoIP(eventIP);
+        isRateLimited = geoLocation.status === 'fail' && geoLocation.message === 'rate limited';
+        isFailed = geoLocation.status === 'fail' && geoLocation.message !== 'rate limited';
+      } else {
+        // 没有 IP 地址，标记为 Unknown
+        isFailed = true;
+      }
+      
       return {
         projectId,
         eventType: event.eventType || 'pageview',
@@ -125,7 +137,7 @@ export async function POST(request: NextRequest) {
         pageTitle: event.pageTitle || null,
         referrer: event.referrer || null,
         userId: event.userId || null,
-        ipAddress: clientIP || null,
+        ipAddress: eventIP || null,
         country: geoLocation.country || null,
         region: geoLocation.region || null,
         city: geoLocation.city || null,
