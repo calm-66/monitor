@@ -191,7 +191,7 @@ interface PieLabelProps {
 }
 
 function renderPieLabel(props: PieLabelProps) {
-  const { cx, cy, midAngle, innerRadius, outerRadius, percent, name, payload } = props;
+  const { cx, cy, midAngle, innerRadius, outerRadius, percent, name, index, payload } = props;
   const radius = (innerRadius + outerRadius) / 2;
   
   // 计算标签位置
@@ -201,7 +201,10 @@ function renderPieLabel(props: PieLabelProps) {
   // 判断是否只有一个数据项（100%）
   const isSingleData = percent === 1;
   
-  // 单数据时将标签放在圆心位置，使用白色文字增加对比度
+  // 获取当前扇区的颜色
+  const sectorColor = COLORS[index % COLORS.length];
+  
+  // 单数据时将标签放在圆心位置
   if (isSingleData) {
     return (
       <text
@@ -209,25 +212,25 @@ function renderPieLabel(props: PieLabelProps) {
         y={cy}
         textAnchor="middle"
         dominantBaseline="middle"
-        fill="white"
+        fill={sectorColor}
         fontWeight="bold"
-        style={{ textShadow: '0px 0px 3px rgba(0,0,0,0.5)' }}
+        fontSize="14"
       >
         {`${name}: ${(percent * 100).toFixed(0)}%`}
       </text>
     );
   }
   
-  // 多数据时使用默认位置
+  // 多数据时使用默认位置，文字颜色与扇区颜色一致
   return (
     <text
       x={x}
       y={y}
-      fill="white"
+      fill={sectorColor}
       textAnchor={x > cx ? 'start' : 'end'}
       dominantBaseline="middle"
       fontWeight="bold"
-      style={{ textShadow: '0px 0px 3px rgba(0,0,0,0.5)' }}
+      fontSize="12"
     >
       {`${name}: ${(percent * 100).toFixed(0)}%`}
     </text>
