@@ -102,8 +102,17 @@ export interface StatsResponse {
   environments?: string[];
 }
 
-// IP 解析限制追踪
+// IP 解析限制追踪（已弃用 - 保留用于向后兼容）
 export interface IpLimitStats {
+  totalRequests: number;
+  successfulResolves: number;
+  rateLimitedCount: number;
+  failedCount: number;
+  rateLimitedRatio: number;
+}
+
+// IP 解析统计（替代 IpLimitStats）
+export interface IpResolveStats {
   totalRequests: number;
   successfulResolves: number;
   rateLimitedCount: number;
