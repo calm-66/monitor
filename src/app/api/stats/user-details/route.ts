@@ -173,7 +173,20 @@ export async function GET(request: NextRequest) {
       whereCondition.eventName = 'login';
     }
 
-    // 获取所有带 userId 的事件记录
+    // 解析页面路径（只保留 pathname，不包含域名）
+    function parsePagePath(url: string | null): string {
+      if (!url) return '-';
+      try {
+        // 尝试解析 URL，只返回 pathname 部分
+        const parsed = new URL(url);
+        return parsed.pathname;
+      } catch {
+        // 如果 URL 格式无效，返回原始字符串或 '-'
+        return url || '-';
+      }
+    }
+
+    // 获取所有带 userId 的事件记录（不限制数量，以便统计每个用户的页面访问）
     const events = await prisma.event.findMany({
       where: whereCondition,
       select: {
@@ -189,44 +202,61 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: 'desc'
       },
-      take: 100 // 限制最多 100 条记录
+      take: 500 // 增加限制到 500 条记录，以便更好地统计页面访问
     });
 
-    // 按 userId 去重，保留每个用户的第一条记录
-    const userMap = new Map<string, typeof events[0]>();
+    // 方案 B：对每个用户，统计访问最多的页面
+    // 1. 首先按 userId 分组，统计每个用户的页面访问次数
+    const userPageVisits = new Map<string, Map<string, number>>();
+    const userEvents = new Map<string, typeof events[0]>(); // 保留每个用户的最新事件（用于其他字段）
+    
     events.forEach(event => {
-      if (!userMap.has(event.userId!)) {
-        userMap.set(event.userId!, event);
+      const userId = event.userId!;
+      
+      // 保留最新事件用于获取城市、设备等信息
+      if (!userEvents.has(userId)) {
+        userEvents.set(userId, event);
       }
+      
+      // 统计页面访问次数
+      const pagePath = parsePagePath(event.pageUrl);
+      if (!userPageVisits.has(userId)) {
+        userPageVisits.set(userId, new Map<string, number>());
+      }
+      const pageMap = userPageVisits.get(userId)!;
+      pageMap.set(pagePath, (pageMap.get(pagePath) || 0) + 1);
     });
 
-    // 解析页面路径（只保留 pathname，不包含域名）
-    function parsePagePath(url: string | null): string {
-      if (!url) return '-';
-      try {
-        // 尝试解析 URL，只返回 pathname 部分
-        const parsed = new URL(url);
-        return parsed.pathname;
-      } catch {
-        // 如果 URL 格式无效，返回原始字符串或 '-'
-        return url || '-';
-      }
+    // 2. 为每个用户选择访问次数最多的页面
+    function getMostVisitedPage(pageVisits: Map<string, number>): string {
+      let maxPage = '-';
+      let maxCount = 0;
+      pageVisits.forEach((count, page) => {
+        if (count > maxCount) {
+          maxCount = count;
+          maxPage = page;
+        }
+      });
+      return maxPage;
     }
 
-    // 转换为响应格式
-    const userDetails = Array.from(userMap.values()).map(event => {
+    // 3. 构建用户详细信息
+    const userDetails = Array.from(userEvents.entries()).map(([userId, event]) => {
       const offset = getTimezoneOffset(event.city, event.country);
       const localTime = convertToLocalTime(event.createdAt, offset);
       const device = categorizeDevice(event.deviceType, event.os);
-      const pagePath = parsePagePath(event.pageUrl);
+      
+      // 获取该用户访问最多的页面
+      const pageVisits = userPageVisits.get(userId);
+      const mostVisitedPage = pageVisits ? getMostVisitedPage(pageVisits) : '-';
 
       return {
-        userId: event.userId,
+        userId: userId,
         city: event.city || event.country || 'Unknown',
         deviceType: device,
         browser: event.browser || 'Unknown',
         localTime,
-        pageUrl: pagePath
+        pageUrl: mostVisitedPage
       };
     });
 
