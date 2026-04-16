@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { parseDateRange, log, formatAsBeijingDate } from '@/lib/utils';
+import { IpResolveStats } from '@/types/monitor';
 import { StatsResponse } from '@/types/monitor';
 
 // 简单的 CORS 头（允许所有来源）
@@ -285,26 +286,14 @@ export async function GET(request: NextRequest) {
       take: 10 // 限制前 10 个页面
     });
     
-    // 获取 IP 解析限制统计
-    const ipLimitStats = await prisma.ipLimitTracker.findMany({
-      where: {
-        projectId,
-        date: {
-          gte: startDate || new Date().toISOString().split('T')[0]
-        }
-      },
-      orderBy: {
-        date: 'desc'
-      },
-      take: 30 // 最近 30 天
-    });
-    
-    // 汇总 IP 限制统计
-    const totalRequests = ipLimitStats.reduce((sum: number, stat: { totalRequests: number }) => sum + stat.totalRequests, 0);
-    const successfulResolves = ipLimitStats.reduce((sum: number, stat: { successfulResolves: number }) => sum + stat.successfulResolves, 0);
-    const rateLimitedCount = ipLimitStats.reduce((sum: number, stat: { rateLimitedCount: number }) => sum + stat.rateLimitedCount, 0);
-    const failedCount = ipLimitStats.reduce((sum: number, stat: { failedCount: number }) => sum + stat.failedCount, 0);
-    const rateLimitedRatio = totalRequests > 0 ? rateLimitedCount / totalRequests : 0;
+    // IP 解析限制统计已删除，使用空数据
+    const ipResolveStats: IpResolveStats = {
+      totalRequests: 0,
+      successfulResolves: 0,
+      rateLimitedCount: 0,
+      failedCount: 0,
+      rateLimitedRatio: 0
+    };
     
     // 构建响应数据
     const stats: StatsResponse = {
@@ -320,13 +309,7 @@ export async function GET(request: NextRequest) {
         page: item.pageUrl || 'Unknown',
         count: item._count.id
       })),
-      ipResolveStats: {
-        totalRequests,
-        successfulResolves,
-        rateLimitedCount,
-        failedCount,
-        rateLimitedRatio
-      },
+      ipResolveStats,
       todayPV,
       viewsByRegion,
       activeUsersByRegion
