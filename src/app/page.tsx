@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Project } from '@/types/monitor';
 
 interface ProjectWithCount extends Project {
@@ -8,13 +9,50 @@ interface ProjectWithCount extends Project {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [projects, setProjects] = useState<ProjectWithCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [newProjectDomain, setNewProjectDomain] = useState('');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // 检查 session 状态
+  useEffect(() => {
+    const checkSession = async () => {
+      const token = localStorage.getItem('monitor_session_token');
+      if (!token) {
+        setIsLoggedIn(false);
+        setIsCheckingSession(false);
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        
+        if (res.ok) {
+          setIsLoggedIn(true);
+        } else {
+          localStorage.removeItem('monitor_session_token');
+          setIsLoggedIn(false);
+        }
+      } catch (error) {
+        console.error('检查 session 失败:', error);
+        setIsLoggedIn(false);
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+    
+    checkSession();
+  }, []);
 
   // 加载项目列表
   useEffect(() => {
@@ -115,10 +153,44 @@ export default function Home() {
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
+  // 检查 session 中，显示加载状态
+  if (isCheckingSession) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-500">Checking session...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Monitor Platform</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900">Monitor Platform</h1>
+          <div className="flex items-center space-x-4">
+            {isLoggedIn ? (
+              <>
+                <span className="text-sm text-gray-500">已登录</span>
+                <a
+                  href="/login"
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >
+                  管理登录
+                </a>
+              </>
+            ) : (
+              <a
+                href="/login"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                管理员登录
+              </a>
+            )}
+          </div>
+        </div>
 
         {/* 创建项目表单 */}
         <section className="bg-white rounded-lg shadow-md p-6 mb-8">

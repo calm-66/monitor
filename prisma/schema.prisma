@@ -23,6 +23,17 @@ model Project {
   events      Event[]
 }
 
+// Session Token 表 - 用于 Dashboard 自动登录
+model SessionToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([token])
+}
+
 // 事件表 - 记录所有访问事件
 model Event {
   id        String   @id @default(cuid())
