@@ -814,7 +814,6 @@ export default function DashboardPage() {
                             ))}
                           </Pie>
                           <Tooltip />
-                          <Legend />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
