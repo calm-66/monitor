@@ -157,22 +157,6 @@ export async function GET(request: NextRequest) {
       end = parsed.end;
     }
 
-    // 查询条件 - 根据 type 参数区分
-    // type='active' 时只查询 login 事件，type='uv' 时查询所有事件
-    const whereCondition: any = {
-      projectId,
-      createdAt: {
-        gte: start,
-        lte: end
-      },
-      userId: { not: null }
-    };
-    
-    // 当 type='active' 时，只查询 eventName='login' 的事件
-    if (type === 'active') {
-      whereCondition.eventName = 'login';
-    }
-
     // 解析页面路径（只保留 pathname，不包含域名）
     function parsePagePath(url: string | null): string {
       if (!url) return '-';
@@ -186,27 +170,95 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 获取所有带 userId 的事件记录（不限制数量，以便统计每个用户的页面访问）
-    const events = await prisma.event.findMany({
-      where: whereCondition,
-      select: {
-        userId: true,
-        city: true,
-        country: true,
-        deviceType: true,
-        os: true,
-        browser: true,
-        createdAt: true,
-        pageUrl: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 500 // 增加限制到 500 条记录，以便更好地统计页面访问
-    });
+    // 根据 type 参数采用不同的查询策略
+    let events: any[] = [];
+    
+    if (type === 'active') {
+      // 步骤 1: 先查询 login 事件，获取活跃用户列表（去重后的 userId）
+      const loginWhereCondition: any = {
+        projectId,
+        eventName: 'login',
+        createdAt: {
+          gte: start,
+          lte: end
+        },
+        userId: { not: null }
+      };
+      
+      const loginEvents = await prisma.event.findMany({
+        where: loginWhereCondition,
+        select: {
+          userId: true,
+          createdAt: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+      
+      // 获取有 login 事件的 userId 列表（去重）
+      const activeUserIds = Array.from(new Set(loginEvents.map(e => e.userId)));
+      
+      // 步骤 2: 查询这些活跃用户的所有事件（用于获取页面访问记录）
+      if (activeUserIds.length > 0) {
+        const allEventsWhereCondition: any = {
+          projectId,
+          userId: { in: activeUserIds },
+          createdAt: {
+            gte: start,
+            lte: end
+          }
+        };
+        
+        events = await prisma.event.findMany({
+          where: allEventsWhereCondition,
+          select: {
+            userId: true,
+            city: true,
+            country: true,
+            deviceType: true,
+            os: true,
+            browser: true,
+            createdAt: true,
+            pageUrl: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 500
+        });
+      }
+    } else {
+      // type='uv' 时查询所有事件
+      const whereCondition: any = {
+        projectId,
+        createdAt: {
+          gte: start,
+          lte: end
+        },
+        userId: { not: null }
+      };
+      
+      events = await prisma.event.findMany({
+        where: whereCondition,
+        select: {
+          userId: true,
+          city: true,
+          country: true,
+          deviceType: true,
+          os: true,
+          browser: true,
+          createdAt: true,
+          pageUrl: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 500
+      });
+    }
 
-    // 方案 B：对每个用户，统计访问最多的页面
-    // 1. 首先按 userId 分组，统计每个用户的页面访问次数
+    // 按 userId 分组，获取每个用户的最近访问页面和最新事件信息
     const userPageVisits = new Map<string, Map<string, number>>();
     const userEvents = new Map<string, typeof events[0]>(); // 保留每个用户的最新事件（用于其他字段）
     
@@ -227,28 +279,34 @@ export async function GET(request: NextRequest) {
       pageMap.set(pagePath, (pageMap.get(pagePath) || 0) + 1);
     });
 
-    // 2. 为每个用户选择访问次数最多的页面
-    function getMostVisitedPage(pageVisits: Map<string, number>): string {
-      let maxPage = '-';
-      let maxCount = 0;
-      pageVisits.forEach((count, page) => {
-        if (count > maxCount) {
-          maxCount = count;
-          maxPage = page;
+    // 获取用户最近访问的页面（按时间排序，取最后一个访问的页面）
+    function getLatestPage(pageVisits: Map<string, number>, userId: string): string {
+      // 获取该用户的所有事件，按时间排序
+      const userEventsList = events
+        .filter(e => e.userId === userId)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      
+      // 返回最近访问的页面（有 pageUrl 且不是 login 事件的）
+      for (const event of userEventsList) {
+        const pagePath = parsePagePath(event.pageUrl);
+        if (pagePath !== '-' && pagePath !== '/') {
+          return pagePath;
         }
-      });
-      return maxPage;
+      }
+      
+      // 如果没有其他页面，返回第一个（可能是 '/'）
+      return userEventsList.length > 0 ? parsePagePath(userEventsList[0].pageUrl) : '-';
     }
 
-    // 3. 构建用户详细信息
+    // 构建用户详细信息
     const userDetails = Array.from(userEvents.entries()).map(([userId, event]) => {
       const offset = getTimezoneOffset(event.city, event.country);
       const localTime = convertToLocalTime(event.createdAt, offset);
       const device = categorizeDevice(event.deviceType, event.os);
       
-      // 获取该用户访问最多的页面
+      // 获取该用户最近访问的页面
       const pageVisits = userPageVisits.get(userId);
-      const mostVisitedPage = pageVisits ? getMostVisitedPage(pageVisits) : '-';
+      const latestPage = pageVisits ? getLatestPage(pageVisits, userId) : '-';
 
       return {
         userId: userId,
@@ -256,7 +314,7 @@ export async function GET(request: NextRequest) {
         deviceType: device,
         browser: event.browser || 'Unknown',
         localTime,
-        pageUrl: mostVisitedPage
+        pageUrl: latestPage
       };
     });
 

@@ -285,6 +285,7 @@ export default function DashboardPage() {
   const [deviceDistribution, setDeviceDistribution] = useState<DistributionData[]>([]);
   const [pageDistribution, setPageDistribution] = useState<DistributionData[]>([]);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
 
   // 日期范围结束
   const endDateStr = endDate;
@@ -433,6 +434,19 @@ export default function DashboardPage() {
     setCityDistribution([]);
     setDeviceDistribution([]);
     setPageDistribution([]);
+    setCopiedUserId(null);
+  }, []);
+
+  // 复制 User ID 到剪贴板
+  const handleCopyUserId = useCallback(async (userId: string) => {
+    try {
+      await navigator.clipboard.writeText(userId);
+      setCopiedUserId(userId);
+      // 2 秒后恢复显示
+      setTimeout(() => setCopiedUserId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy user ID:', err);
+    }
   }, []);
 
   // 初始化
@@ -888,8 +902,19 @@ export default function DashboardPage() {
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {userDetails.map((user, index) => (
                             <tr key={`${user.userId}-${index}`} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 text-sm text-gray-900 font-mono">
-                                {user.userId ? `${user.userId.slice(0, 10)}...` : '-'}
+                              <td 
+                                className="px-4 py-3 text-sm font-mono cursor-pointer hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                onClick={() => user.userId && handleCopyUserId(user.userId)}
+                                title="Click to copy full User ID"
+                              >
+                                {user.userId ? (
+                                  <span className="flex items-center gap-1">
+                                    {user.userId.slice(0, 10)}...
+                                    {copiedUserId === user.userId && (
+                                      <span className="text-xs text-green-600 font-normal">✓ Copied!</span>
+                                    )}
+                                  </span>
+                                ) : '-'}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-900">{user.city}</td>
                               <td className="px-4 py-3 text-sm text-gray-900">{user.deviceType}</td>
