@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { resolveGeoIP, parseUserAgent } from '@/lib/geoip';
-import { getClientIP, formatAsBeijingDate, log } from '@/lib/utils';
+import { getClientIP, log } from '@/lib/utils';
 import { EventPayload } from '@/types/monitor';
 
 // 简单的 CORS 头（允许所有来源）
@@ -158,54 +158,7 @@ export async function POST(request: NextRequest) {
       data: eventsToCreate
     });
     
-    // 统计 IP 解析结果
-    let totalRateLimited = 0;
-    let totalFailed = 0;
-    let totalSuccessful = 0;
-    
-    geoResults.forEach(geoLocation => {
-      if (geoLocation.status === 'fail') {
-        if (geoLocation.message === 'rate limited') {
-          totalRateLimited++;
-        } else {
-          totalFailed++;
-        }
-      } else {
-        totalSuccessful++;
-      }
-    });
-    
-    // 更新 IP 限制追踪记录（使用北京时间）
-    const today = formatAsBeijingDate(new Date());
-    await prisma.ipLimitTracker.upsert({
-      where: {
-        projectId_date: {
-          projectId,
-          date: today
-        }
-      },
-      update: {
-        totalRequests: { increment: events.length },
-        successfulResolves: totalRateLimited || totalFailed ? undefined : { increment: events.length },
-        rateLimitedCount: totalRateLimited ? { increment: totalRateLimited } : undefined,
-        failedCount: totalFailed ? { increment: totalFailed } : undefined,
-      },
-      create: {
-        projectId,
-        date: today,
-        totalRequests: events.length,
-        successfulResolves: totalRateLimited || totalFailed ? 0 : events.length,
-        rateLimitedCount: totalRateLimited,
-        failedCount: totalFailed,
-      }
-    });
-    
-    log('info', `Events received: ${events.length}`, { 
-      projectId, 
-      successfulResolves: totalSuccessful,
-      rateLimitedCount: totalRateLimited,
-      failedCount: totalFailed
-    });
+    log('info', `Events received: ${events.length}`, { projectId });
     
     return NextResponse.json(
       { success: true, data: { received: events.length } },

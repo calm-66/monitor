@@ -21,7 +21,6 @@ model Project {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   events      Event[]
-  ipLimitTrackers IpLimitTracker[]
 }
 
 // 事件表 - 记录所有访问事件
@@ -71,16 +70,3 @@ model Event {
   @@index([country]) // 按地区统计
 }
 
-// IP 解析限制追踪表 - 用于统计超出限制的情况
-model IpLimitTracker {
-  id               String @id @default(cuid())
-  projectId        String
-  project          Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  date             String // 日期字符串 YYYY-MM-DD
-  totalRequests    Int    @default(0) // 总请求数
-  successfulResolves Int    @default(0) // 成功解析数
-  rateLimitedCount Int    @default(0) // 被限流次数
-  failedCount      Int    @default(0) // 失败次数
-
-  @@unique([projectId, date]) // 每天一条记录
-}
