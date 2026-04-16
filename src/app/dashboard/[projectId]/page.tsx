@@ -472,12 +472,6 @@ export default function DashboardPage() {
     };
   }, [projectInfo, apiKey, loadExternalUserStats]);
 
-  // 登出
-  const handleLogout = () => {
-    localStorage.removeItem('monitor_session_token');
-    router.push('/');
-  };
-
   // 刷新数据
   const handleRefresh = async () => {
     setLoading(true);
@@ -559,12 +553,6 @@ export default function DashboardPage() {
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   {loading ? 'Loading...' : 'Refresh'}
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Logout
                 </button>
                 <a
                   href="/"
