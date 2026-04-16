@@ -907,14 +907,16 @@ export default function DashboardPage() {
                                 onClick={() => user.userId && handleCopyUserId(user.userId)}
                                 title="Click to copy full User ID"
                               >
-                                {user.userId ? (
-                                  <span className="flex items-center gap-1">
+                                {user.userId != null && user.userId !== '' ? (
+                                  <span className="text-gray-900">
                                     {user.userId.slice(0, 10)}...
                                     {copiedUserId === user.userId && (
-                                      <span className="text-xs text-green-600 font-normal">✓ Copied!</span>
+                                      <span className="ml-1 text-xs text-green-600 font-normal">✓ Copied!</span>
                                     )}
                                   </span>
-                                ) : '-'}
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-900">{user.city}</td>
                               <td className="px-4 py-3 text-sm text-gray-900">{user.deviceType}</td>

@@ -309,7 +309,7 @@ export async function GET(request: NextRequest) {
       const latestPage = pageVisits ? getLatestPage(pageVisits, userId) : '-';
 
       return {
-        userId: userId,
+        userId: String(userId), // 确保 userId 是字符串类型
         city: event.city || event.country || 'Unknown',
         deviceType: device,
         browser: event.browser || 'Unknown',
