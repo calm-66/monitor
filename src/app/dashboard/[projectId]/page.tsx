@@ -194,7 +194,7 @@ function renderPieLabel(props: PieLabelProps) {
   const { cx, cy, midAngle, innerRadius, outerRadius, percent, name, index } = props;
   
   // 计算标签位置（在饼图外部，距离圆心更远）
-  const labelRadius = outerRadius + 50; // 标签在饼图外部 50px
+  const labelRadius = outerRadius + 60; // 标签在饼图外部 60px
   const x = cx + labelRadius * Math.cos(-midAngle * (Math.PI / 180));
   const y = cy + labelRadius * Math.sin(-midAngle * (Math.PI / 180));
   
@@ -922,7 +922,7 @@ export default function DashboardPage() {
                     <div className="border border-gray-200 rounded-lg p-4">
                       <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">City Distribution</h3>
                       {cityDistribution.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={250}>
+                        <ResponsiveContainer width="100%" height={300}>
                           <PieChart>
                             <Pie
                               data={cityDistribution}
@@ -942,7 +942,7 @@ export default function DashboardPage() {
                           </PieChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
+                        <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
                           No city data
                         </div>
                       )}
@@ -952,7 +952,7 @@ export default function DashboardPage() {
                     <div className="border border-gray-200 rounded-lg p-4">
                       <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Device Distribution</h3>
                       {deviceDistribution.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={250}>
+                        <ResponsiveContainer width="100%" height={300}>
                           <PieChart>
                             <Pie
                               data={deviceDistribution}
@@ -972,7 +972,7 @@ export default function DashboardPage() {
                           </PieChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
+                        <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
                           No device data
                         </div>
                       )}
@@ -982,7 +982,7 @@ export default function DashboardPage() {
                     {selectedCard === 'active' && pageDistribution.length > 0 && (
                       <div className="border border-gray-200 rounded-lg p-4">
                         <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Page Distribution</h3>
-                        <ResponsiveContainer width="100%" height={250}>
+                        <ResponsiveContainer width="100%" height={300}>
                           <PieChart>
                             <Pie
                               data={pageDistribution}
