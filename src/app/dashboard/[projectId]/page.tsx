@@ -177,7 +177,7 @@ function PieTooltip({ active, payload }: { active?: boolean; payload?: unknown[]
   return null;
 }
 
-// 饼图标签渲染函数 - 修复单数据显示遮挡问题
+// 饼图标签渲染函数 - 标签显示在饼图外部
 interface PieLabelProps {
   cx: number;
   cy: number;
@@ -191,37 +191,16 @@ interface PieLabelProps {
 }
 
 function renderPieLabel(props: PieLabelProps) {
-  const { cx, cy, midAngle, innerRadius, outerRadius, percent, name, index, payload } = props;
-  const radius = (innerRadius + outerRadius) / 2;
+  const { cx, cy, midAngle, innerRadius, outerRadius, percent, name, index } = props;
   
-  // 计算标签位置
-  const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-  const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
-  
-  // 判断是否只有一个数据项（100%）
-  const isSingleData = percent === 1;
+  // 计算标签位置（在饼图外部，距离圆心更远）
+  const labelRadius = outerRadius + 50; // 标签在饼图外部 50px
+  const x = cx + labelRadius * Math.cos(-midAngle * (Math.PI / 180));
+  const y = cy + labelRadius * Math.sin(-midAngle * (Math.PI / 180));
   
   // 获取当前扇区的颜色
   const sectorColor = COLORS[index % COLORS.length];
   
-  // 单数据时将标签放在圆心位置
-  if (isSingleData) {
-    return (
-      <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill={sectorColor}
-        fontWeight="bold"
-        fontSize="14"
-      >
-        {`${name}: ${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  }
-  
-  // 多数据时使用默认位置，文字颜色与扇区颜色一致
   return (
     <text
       x={x}
@@ -937,13 +916,13 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* 饼图区域 */}
-                  <div className="grid grid-cols-3 gap-4">
+                  {/* 饼图区域 - 垂直排列 3 行 */}
+                  <div className="flex flex-col gap-4">
                     {/* City 分布饼图 */}
                     <div className="border border-gray-200 rounded-lg p-4">
                       <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">City Distribution</h3>
                       {cityDistribution.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={200}>
+                        <ResponsiveContainer width="100%" height={250}>
                           <PieChart>
                             <Pie
                               data={cityDistribution}
@@ -951,7 +930,7 @@ export default function DashboardPage() {
                               cy="50%"
                               labelLine={false}
                               label={renderPieLabel}
-                              outerRadius={60}
+                              outerRadius={80}
                               fill="#3B82F6"
                               dataKey="count"
                             >
@@ -963,7 +942,7 @@ export default function DashboardPage() {
                           </PieChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
+                        <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
                           No city data
                         </div>
                       )}
@@ -973,7 +952,7 @@ export default function DashboardPage() {
                     <div className="border border-gray-200 rounded-lg p-4">
                       <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Device Distribution</h3>
                       {deviceDistribution.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={200}>
+                        <ResponsiveContainer width="100%" height={250}>
                           <PieChart>
                             <Pie
                               data={deviceDistribution}
@@ -981,7 +960,7 @@ export default function DashboardPage() {
                               cy="50%"
                               labelLine={false}
                               label={renderPieLabel}
-                              outerRadius={60}
+                              outerRadius={80}
                               fill="#3B82F6"
                               dataKey="count"
                             >
@@ -993,7 +972,7 @@ export default function DashboardPage() {
                           </PieChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
+                        <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
                           No device data
                         </div>
                       )}
@@ -1003,7 +982,7 @@ export default function DashboardPage() {
                     {selectedCard === 'active' && pageDistribution.length > 0 && (
                       <div className="border border-gray-200 rounded-lg p-4">
                         <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Page Distribution</h3>
-                        <ResponsiveContainer width="100%" height={200}>
+                        <ResponsiveContainer width="100%" height={250}>
                           <PieChart>
                             <Pie
                               data={pageDistribution}
@@ -1011,7 +990,7 @@ export default function DashboardPage() {
                               cy="50%"
                               labelLine={false}
                               label={renderPieLabel}
-                              outerRadius={60}
+                              outerRadius={80}
                               fill="#3B82F6"
                               dataKey="count"
                             >
