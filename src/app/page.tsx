@@ -271,38 +271,6 @@ export default function Home() {
           )}
         </section>
 
-        {/* 使用说明 */}
-        <section className="bg-white rounded-lg shadow-md p-6 mt-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">How to Use</h2>
-          <div className="prose prose-sm text-gray-600">
-            <ol className="list-decimal list-inside space-y-2">
-              <li>Create a new project above</li>
-              <li>Copy the API Key for your project</li>
-              <li>Add the monitoring script to your website:</li>
-            </ol>
-            <pre className="bg-gray-100 p-4 rounded-md mt-2 overflow-x-auto text-gray-800">
-{`<script src="https://your-domain.com/monitor.js"></script>
-<script>
-  Monitor.init({
-    projectId: 'your-project-id',
-    apiKey: 'your-api-key',
-    endpoint: 'https://your-domain.com/api/events'
-  });
-</script>`}
-            </pre>
-            <p className="mt-4 text-sm text-gray-500">
-              Or use data attributes for automatic initialization:
-            </p>
-            <pre className="bg-gray-100 p-4 rounded-md mt-2 overflow-x-auto text-gray-800">
-{`<script 
-  src="https://your-domain.com/monitor.js"
-  data-project-id="your-project-id"
-  data-api-key="your-api-key"
-  data-endpoint="https://your-domain.com/api/events"
-></script>`}
-            </pre>
-          </div>
-        </section>
       </div>
     </main>
   );
