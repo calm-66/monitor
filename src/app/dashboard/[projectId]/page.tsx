@@ -251,7 +251,6 @@ export default function DashboardPage() {
   const [projectName, setProjectName] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [projectInfo, setProjectInfo] = useState<Project | null>(null);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
@@ -433,40 +432,9 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // 检查 session 是否有效
+  // 加载项目信息
   useEffect(() => {
-    const checkSession = async () => {
-      const token = localStorage.getItem('monitor_session_token');
-      if (!token) {
-        // 没有 token，重定向到登录页
-        router.push('/login');
-        return;
-      }
-      
-      try {
-        const res = await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
-        
-        if (!res.ok) {
-          // Session 无效，清除本地存储并重定向到登录页
-          localStorage.removeItem('monitor_session_token');
-          router.push('/login');
-          return;
-        }
-        
-        // Session 有效，继续加载页面
-        setIsCheckingSession(false);
-        loadProjectInfo();
-      } catch (error) {
-        console.error('检查 session 失败:', error);
-        router.push('/login');
-      }
-    };
-    
-    checkSession();
+    loadProjectInfo();
   }, [router, loadProjectInfo]);
 
   // 当 API Key 加载完成后加载统计数据
@@ -505,21 +473,9 @@ export default function DashboardPage() {
   }, [projectInfo, apiKey, loadExternalUserStats]);
 
   // 登出
-  const handleLogout = async () => {
-    const token = localStorage.getItem('monitor_session_token');
-    if (token) {
-      try {
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
-      } catch (error) {
-        console.error('登出失败:', error);
-      }
-    }
+  const handleLogout = () => {
     localStorage.removeItem('monitor_session_token');
-    router.push('/login');
+    router.push('/');
   };
 
   // 刷新数据
@@ -569,18 +525,6 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
-
-  // 检查 session 中，显示加载状态
-  if (isCheckingSession) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-500">Checking session...</p>
-        </div>
-      </main>
-    );
-  }
 
   // 获取面板标题
   const getPanelTitle = () => {

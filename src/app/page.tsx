@@ -14,6 +14,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [newProjectDomain, setNewProjectDomain] = useState('');
@@ -37,7 +40,8 @@ export default function Home() {
           body: JSON.stringify({ token }),
         });
         
-        if (res.ok) {
+        const data = await res.json();
+        if (res.ok && data.valid) {
           setIsLoggedIn(true);
         } else {
           localStorage.removeItem('monitor_session_token');
@@ -58,6 +62,55 @@ export default function Home() {
   useEffect(() => {
     loadProjects();
   }, []);
+
+  // 处理登录
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '登录失败');
+      }
+
+      if (data.success) {
+        localStorage.setItem('monitor_session_token', data.data.token);
+        setIsLoggedIn(true);
+        setPassword('');
+      }
+    } catch (err: any) {
+      setLoginError(err.message);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // 处理登出
+  const handleLogout = async () => {
+    const token = localStorage.getItem('monitor_session_token');
+    if (token) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+      } catch (error) {
+        console.error('登出失败:', error);
+      }
+    }
+    localStorage.removeItem('monitor_session_token');
+    setIsLoggedIn(false);
+  };
 
   const loadProjects = async () => {
     try {
@@ -153,7 +206,7 @@ export default function Home() {
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
-  // 检查 session 中，显示加载状态
+  // 检查 session 中，显示登录弹窗
   if (isCheckingSession) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -165,30 +218,65 @@ export default function Home() {
     );
   }
 
+  // 未登录时显示登录表单
+  if (!isLoggedIn) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-100 to-purple-100">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+          <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
+            Monitor Dashboard
+          </h1>
+          <p className="text-center text-gray-500 mb-6">
+            管理员登录
+          </p>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                密码
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="请输入管理员密码"
+              />
+            </div>
+
+            {loginError && (
+              <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                {loginError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loginLoading}
+              className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition disabled:opacity-50"
+            >
+              {loginLoading ? '登录中...' : '登录'}
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  // 已登录时显示项目列表
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Monitor Platform</h1>
           <div className="flex items-center space-x-4">
-            {isLoggedIn ? (
-              <>
-                <span className="text-sm text-gray-500">已登录</span>
-                <a
-                  href="/login"
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                >
-                  管理登录
-                </a>
-              </>
-            ) : (
-              <a
-                href="/login"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                管理员登录
-              </a>
-            )}
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            >
+              退出登录
+            </button>
           </div>
         </div>
 
