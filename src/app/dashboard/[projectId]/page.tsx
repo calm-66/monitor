@@ -619,7 +619,11 @@ export default function DashboardPage() {
                   >
                     <h3 className="text-sm font-medium text-gray-500">Unique Visitors</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {stats.uniqueVisitorsByDay?.length > 0 ? stats.uniqueVisitorsByDay[stats.uniqueVisitorsByDay.length - 1]?.count : '-'}
+                      {(() => {
+                        const todayStr = getTodayStr();
+                        const todayData = stats.uniqueVisitorsByDay?.find(item => item.date === todayStr);
+                        return todayData?.count ?? 0;
+                      })()}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">Click for details</p>
                   </div>
@@ -678,12 +682,20 @@ export default function DashboardPage() {
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
                     {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={filterCurrentMonth(stats.uniqueVisitorsByDay)}>
+                        <BarChart data={fillMissingDates(
+                          filterCurrentMonth(stats.uniqueVisitorsByDay),
+                          startDate,
+                          endDate
+                        )}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
                             dataKey="date" 
                             tickFormatter={formatShortDate}
-                            ticks={getXAxisTicks(filterCurrentMonth(stats.uniqueVisitorsByDay))}
+                            ticks={getXAxisTicks(fillMissingDates(
+                              filterCurrentMonth(stats.uniqueVisitorsByDay),
+                              startDate,
+                              endDate
+                            ))}
                             interval="preserveStartEnd"
                           />
                           <YAxis allowDecimals={false} />
