@@ -7,7 +7,7 @@ import { Project, Feedback, FeedbackStats } from '@/types/monitor';
 // Feedback type icons and labels
 const FEEDBACK_TYPE_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
   suggestion: { icon: '💡', label: '建议', color: '#10B981' },
-  bug: { icon: '🐛', label: 'Bug 报告', color: '#EF4444' },
+  bug: { icon: '🐞', label: 'Bug 报告', color: '#EF4444' },
   other: { icon: '📝', label: '其他', color: '#3B82F6' },
 };
 
