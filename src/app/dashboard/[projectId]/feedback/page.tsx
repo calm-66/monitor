@@ -223,7 +223,7 @@ export default function FeedbackPage() {
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
               >
                 <option value="all">All Types</option>
                 <option value="suggestion">💡 Suggestions</option>
@@ -370,7 +370,7 @@ export default function FeedbackPage() {
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-500">User ID</span>
                   <span 
-                    className="font-mono cursor-pointer hover:text-blue-600"
+                    className="font-mono text-gray-900 cursor-pointer hover:text-blue-600 bg-gray-100 px-2 py-1 rounded"
                     onClick={() => selectedFeedback.userId && handleCopyUserId(selectedFeedback.userId)}
                   >
                     {selectedFeedback.userId ? (
@@ -385,6 +385,14 @@ export default function FeedbackPage() {
                     )}
                   </span>
                 </div>
+                {selectedFeedback.userEmail && (
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-gray-500">Email</span>
+                    <span className="text-gray-900 font-mono">
+                      {selectedFeedback.userEmail}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-500">Submit Time</span>
                   <span className="text-gray-900">

@@ -102,6 +102,7 @@ export async function GET(request: NextRequest) {
       id: f.id,
       type: (f.metadata as any)?.type || 'other',
       content: (f.metadata as any)?.content || '',
+      userEmail: (f.metadata as any)?.userEmail || undefined,
       userId: f.userId,
       timestamp: (f.metadata as any)?.timestamp || f.createdAt,
       userAgent: (f.metadata as any)?.userAgent || f.userAgent,
