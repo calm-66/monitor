@@ -197,6 +197,7 @@ export interface Feedback {
   id: string;
   type: 'suggestion' | 'bug' | 'other';
   content: string;
+  userEmail?: string | null;  // 用户邮箱（可选）
   userId: string | null;
   timestamp: string | Date;
   userAgent: string | null;
