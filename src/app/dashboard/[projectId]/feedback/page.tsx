@@ -94,6 +94,7 @@ export default function FeedbackPage() {
       const response = await fetch(url, {
         headers: {
           'X-API-Key': apiKey,
+          'X-Project-ID': projectId,
         },
       });
 
