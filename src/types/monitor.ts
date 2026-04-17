@@ -191,3 +191,37 @@ export interface LoginStatsResponse {
   success: boolean;
   data: LoginStats;
 }
+
+// 反馈数据类型
+export interface Feedback {
+  id: string;
+  type: 'suggestion' | 'bug' | 'other';
+  content: string;
+  userId: string | null;
+  timestamp: string | Date;
+  userAgent: string | null;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  createdAt: Date;
+}
+
+// 反馈统计数据
+export interface FeedbackStats {
+  total: number;
+  suggestion: number;
+  bug: number;
+  other: number;
+}
+
+// 反馈 API 响应
+export interface FeedbackResponse {
+  success: boolean;
+  data: {
+    feedbacks: Feedback[];
+    stats: FeedbackStats;
+  };
+}

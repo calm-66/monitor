@@ -547,6 +547,13 @@ export default function DashboardPage() {
                 </p>
               </div>
               <div className="flex items-center space-x-4">
+                <a
+                  href={`/dashboard/${projectId}/feedback`}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2"
+                >
+                  <span>💬</span>
+                  <span>Feedback</span>
+                </a>
                 <button
                   onClick={handleRefresh}
                   disabled={loading}
