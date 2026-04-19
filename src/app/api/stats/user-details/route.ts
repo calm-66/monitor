@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { parseDateRange, log, getTimezoneOffset, convertUTCToLocalTime } from '@/lib/utils';
+import { parseDateRange, log, getTimezoneOffset, convertUTCToLocalTime, parseBeijingDateRange } from '@/lib/utils';
 
 // 简单的 CORS 头（允许所有来源）
 const corsHeaders = {
@@ -85,11 +85,13 @@ export async function GET(request: NextRequest) {
     let end: Date;
     
     if (date) {
-      // 如果指定了日期，使用该日期的开始和结束
-      start = new Date(`${date}T00:00:00Z`);
-      end = new Date(`${date}T23:59:59Z`);
+      // 如果指定了日期，使用北京时间解析（与统计 API 保持一致）
+      // 这确保了统计数据和详情列表使用相同的时间范围
+      const beijingRange = parseBeijingDateRange(date);
+      start = beijingRange.start;
+      end = beijingRange.end;
     } else {
-      // 否则使用 startDate 和 endDate
+      // 否则使用 startDate 和 endDate（默认使用本地时间）
       const parsed = parseDateRange(startDate, endDate);
       start = parsed.start;
       end = parsed.end;

@@ -169,3 +169,22 @@ export function convertUTCToLocalTime(utcDate: Date, offset: number): string {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+/**
+ * 解析北京时间（UTC+8）日期字符串为 UTC 时间范围
+ * 用于将前端传递的日期字符串（如 '2026-04-19'）转换为数据库查询所需的 UTC 时间范围
+ * 
+ * @param dateStr - 北京时间日期字符串 (YYYY-MM-DD)
+ * @returns 包含 UTC 时间开始和结束的对象 { start: Date, end: Date }
+ */
+export function parseBeijingDateRange(dateStr: string): { start: Date; end: Date } {
+  // 北京时间 00:00:00 = UTC 时间前一天 16:00:00 (UTC-8)
+  // 例如：北京时间 2026-04-19 00:00:00 = UTC 时间 2026-04-18 16:00:00
+  const start = new Date(`${dateStr}T00:00:00+08:00`);
+  
+  // 北京时间 23:59:59 = UTC 时间当天 15:59:59 (UTC-8)
+  // 例如：北京时间 2026-04-19 23:59:59 = UTC 时间 2026-04-19 15:59:59
+  const end = new Date(`${dateStr}T23:59:59+08:00`);
+  
+  return { start, end };
+}
+
