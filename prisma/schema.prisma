@@ -81,3 +81,18 @@ model Event {
   @@index([country]) // 按地区统计
 }
 
+// 支付事件表 - 记录 UsOnly 支付事件
+model PaymentEvent {
+  id             String   @id @default(cuid())
+  source         String   // 数据来源：usonly
+  eventType      String   // payment.completed / donation.created
+  orderId        String
+  amount         Decimal  @db.Decimal(10, 2)
+  currency       String   @default("CNY")
+  metadata       Json?    // 额外元数据
+  receivedAt     DateTime @default(now())
+
+  @@index([eventType])
+  @@index([receivedAt])
+}
+
