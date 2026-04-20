@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         source,
         eventType,
         orderId,
-        amount: BigInt(Math.round(amount * 100)), // 转换为分存储
+        amount: amount, // 存储金额（元，小数）
         currency: currency || 'CNY',
         metadata: metadata ? JSON.parse(JSON.stringify(metadata)) : null,
         receivedAt: timestamp ? new Date(timestamp) : new Date(),

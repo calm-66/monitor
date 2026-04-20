@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       source: e.source,
       eventType: e.eventType,
       orderId: e.orderId,
-      amount: Number(e.amount) / 100, // 转换回元
+      amount: Number(e.amount), // 直接使用（元）
       currency: e.currency,
       metadata: e.metadata,
       receivedAt: e.receivedAt,

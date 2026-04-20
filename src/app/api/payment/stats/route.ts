@@ -51,15 +51,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        totalAmount: totalAmount / 100, // 转换回元
+        totalAmount,
         totalCount,
-        todayAmount: todayAmount / 100,
+        todayAmount,
         todayCount: todayEvents.length,
-        weekAmount: weekAmount / 100,
+        weekAmount,
         weekCount: weekEvents.length,
-        monthAmount: monthAmount / 100,
+        monthAmount,
         monthCount: monthEvents.length,
-        avgOrderValue: avgOrderValue / 100,
+        avgOrderValue,
       },
     });
   } catch (error) {
