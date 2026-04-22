@@ -663,12 +663,20 @@ export default function DashboardPage() {
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Page Views ({getCurrentMonthStr()})</h3>
                     {stats.viewsByDay && stats.viewsByDay.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={filterCurrentMonth(stats.viewsByDay)}>
+                        <BarChart data={fillMissingDates(
+                          filterCurrentMonth(stats.viewsByDay),
+                          startDate,
+                          endDate
+                        )}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
                             dataKey="date" 
                             tickFormatter={formatShortDate}
-                            ticks={getXAxisTicks(filterCurrentMonth(stats.viewsByDay))}
+                            ticks={getXAxisTicks(fillMissingDates(
+                              filterCurrentMonth(stats.viewsByDay),
+                              startDate,
+                              endDate
+                            ))}
                             interval="preserveStartEnd"
                           />
                           <YAxis allowDecimals={false} />
