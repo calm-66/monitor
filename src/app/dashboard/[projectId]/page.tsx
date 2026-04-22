@@ -643,7 +643,7 @@ export default function DashboardPage() {
                     <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {(() => {
-                        const dailyActiveUsers = stats.externalUserStats?.dailyActiveUsers;
+                        const dailyActiveUsers = stats.dailyActiveUsers;
                         if (!dailyActiveUsers || dailyActiveUsers.length === 0) return '0';
                         
                         // 查找当天的数据
@@ -727,10 +727,10 @@ export default function DashboardPage() {
                   {/* 每日登录用户数柱状图 - 可点击 */}
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users ({getCurrentMonthStr()})</h3>
-                    {stats.externalUserStats?.dailyActiveUsers ? (
+                    {stats.dailyActiveUsers && stats.dailyActiveUsers.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={fillMissingDates(
-                          filterCurrentMonth(stats.externalUserStats.dailyActiveUsers),
+                          filterCurrentMonth(stats.dailyActiveUsers),
                           startDate,
                           endDate
                         )}>
@@ -739,7 +739,7 @@ export default function DashboardPage() {
                             dataKey="date" 
                             tickFormatter={formatShortDate}
                             ticks={getXAxisTicks(fillMissingDates(
-                              filterCurrentMonth(stats.externalUserStats.dailyActiveUsers),
+                              filterCurrentMonth(stats.dailyActiveUsers),
                               startDate,
                               endDate
                             ))}

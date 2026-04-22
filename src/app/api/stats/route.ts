@@ -264,6 +264,41 @@ export async function GET(request: NextRequest) {
       count: userIdSet.size
     })).sort((a, b) => a.date.localeCompare(b.date)); // 按日期升序排序
     
+    // 统计每日登录用户数（Daily Active Users）- 从 Event 表中筛选 login 事件
+    // 获取所有登录事件（eventName: 'login'）
+    const loginEvents = await prisma.event.findMany({
+      where: {
+        projectId,
+        createdAt: {
+          gte: start,
+          lte: end
+        },
+        eventName: 'login',
+        userId: { not: null }
+      },
+      select: {
+        userId: true,
+        createdAt: true
+      }
+    });
+    
+    // 按北京时间日期分组，统计每天登录的独立用户数（去重 userId）
+    const dailyActiveUsersMap = new Map<string, Set<string>>();
+    loginEvents.forEach((event) => {
+      const beijingDate = formatAsBeijingDate(event.createdAt);
+      if (!dailyActiveUsersMap.has(beijingDate)) {
+        dailyActiveUsersMap.set(beijingDate, new Set());
+      }
+      dailyActiveUsersMap.get(beijingDate)!.add(event.userId!);
+    });
+    
+    const dailyActiveUsers = Array.from(dailyActiveUsersMap.entries())
+      .map(([date, userIdSet]) => ({
+        date,
+        count: userIdSet.size
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date)); // 按日期升序排序
+    
     // 热门页面排行
     const topPagesResult = await prisma.event.groupBy({
       by: ['pageUrl'],
@@ -305,6 +340,7 @@ export async function GET(request: NextRequest) {
       })),
       viewsByDay,
       uniqueVisitorsByDay,
+      dailyActiveUsers,
       topPages: topPagesResult.map((item: { pageUrl: string | null; _count: { id: number } }) => ({
         page: item.pageUrl || 'Unknown',
         count: item._count.id
