@@ -216,6 +216,30 @@ function renderPieLabel(props: PieLabelProps) {
   );
 }
 
+function renderClickablePieLabel(props: PieLabelProps, onClick: (name: string) => void) {
+  const { cx, cy, midAngle, outerRadius, percent, name, index } = props;
+  const labelRadius = outerRadius + 60;
+  const x = cx + labelRadius * Math.cos(-midAngle * (Math.PI / 180));
+  const y = cy + labelRadius * Math.sin(-midAngle * (Math.PI / 180));
+  const sectorColor = COLORS[index % COLORS.length];
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill={sectorColor}
+      textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="middle"
+      fontWeight="bold"
+      fontSize="12"
+      onClick={() => onClick(name)}
+      style={{ cursor: 'pointer' }}
+    >
+      {`${name}: ${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+}
+
 /**
  * 根据项目 domain 构建 UsOnly stats API URL
  * 处理用户可能输入的 https://、http://、/ 等前缀
@@ -261,6 +285,7 @@ export default function DashboardPage() {
   // 用户详细信息面板状态
   const [selectedCard, setSelectedCard] = useState<'uv' | 'active' | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [cityDistribution, setCityDistribution] = useState<DistributionData[]>([]);
   const [deviceDistribution, setDeviceDistribution] = useState<DistributionData[]>([]);
@@ -362,12 +387,15 @@ export default function DashboardPage() {
   }, [projectId, startDate, endDate, apiKey]);
 
   // 加载用户详细信息
-  const loadUserDetails = useCallback(async (type: 'uv' | 'active', date?: string) => {
+  const loadUserDetails = useCallback(async (type: 'uv' | 'active', date?: string, region?: string) => {
     setUserDetailsLoading(true);
     try {
       let url = `/api/stats/user-details?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&type=${type}`;
       if (date) {
         url += `&date=${date}`;
+      }
+      if (region) {
+        url += `&region=${encodeURIComponent(region)}`;
       }
       
       const response = await fetch(url, {
@@ -397,6 +425,7 @@ export default function DashboardPage() {
     const today = getTodayStr();
     setSelectedCard(type);
     setSelectedDate(today);
+    setSelectedRegion(null);
     loadUserDetails(type, today);
   }, [loadUserDetails]);
 
@@ -404,13 +433,22 @@ export default function DashboardPage() {
   const handleBarClick = useCallback((type: 'uv' | 'active', date: string) => {
     setSelectedCard(type);
     setSelectedDate(date);
+    setSelectedRegion(null);
     loadUserDetails(type, date);
+  }, [loadUserDetails]);
+
+  const handleRegionClick = useCallback((region: string) => {
+    setSelectedCard('uv');
+    setSelectedDate(null);
+    setSelectedRegion(region);
+    loadUserDetails('uv', undefined, region);
   }, [loadUserDetails]);
 
   // 关闭详细信息面板
   const handleClosePanel = useCallback(() => {
     setSelectedCard(null);
     setSelectedDate(null);
+    setSelectedRegion(null);
     setUserDetails([]);
     setCityDistribution([]);
     setDeviceDistribution([]);
@@ -521,6 +559,7 @@ export default function DashboardPage() {
   // 获取面板标题
   const getPanelTitle = () => {
     const baseTitle = selectedCard === 'uv' ? 'Unique Visitors' : 'Active Users';
+    if (selectedRegion) return `${baseTitle} - ${selectedRegion} (${getCurrentMonthStr()})`;
     if (!selectedDate) return baseTitle;
     
     const today = getTodayStr();
@@ -781,10 +820,12 @@ export default function DashboardPage() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            label={(props) => renderClickablePieLabel(props as PieLabelProps, handleRegionClick)}
                             outerRadius={80}
                             fill="#F59E0B"
                             dataKey="count"
+                            onClick={(data) => handleRegionClick(data.name)}
+                            style={{ cursor: 'pointer' }}
                           >
                             {stats.activeUsersByRegion.map((_, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

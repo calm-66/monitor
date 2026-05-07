@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get('projectId');
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
+    const region = searchParams.get('region') || undefined;
     const type = searchParams.get('type') || 'uv'; // 'uv' 或 'active'
     const date = searchParams.get('date'); // 可选，指定具体日期
 
@@ -110,6 +111,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    function normalizeRegionName(event: { city: string | null; region?: string | null; country: string | null }): string {
+      let regionName = event.city || event.region || event.country || 'Unknown';
+      if (regionName && regionName.endsWith('市') && regionName.length > 2) {
+        regionName = regionName.slice(0, -1);
+      }
+      return regionName;
+    }
+
+    function buildRegionWhere(regionName?: string) {
+      if (!regionName) return {};
+      return {
+        OR: [
+          { city: regionName },
+          { city: `${regionName}市` },
+          { region: regionName },
+          { region: `${regionName}市` },
+          { country: regionName }
+        ]
+      };
+    }
+
     // 根据 type 参数采用不同的查询策略
     let events: any[] = [];
     
@@ -147,7 +169,8 @@ export async function GET(request: NextRequest) {
           createdAt: {
             gte: start,
             lte: end
-          }
+          },
+          ...buildRegionWhere(region)
         };
         
         events = await prisma.event.findMany({
@@ -155,6 +178,7 @@ export async function GET(request: NextRequest) {
           select: {
             userId: true,
             city: true,
+            region: true,
             country: true,
             deviceType: true,
             os: true,
@@ -176,7 +200,8 @@ export async function GET(request: NextRequest) {
           gte: start,
           lte: end
         },
-        userId: { not: null }
+        userId: { not: null },
+        ...buildRegionWhere(region)
       };
       
       events = await prisma.event.findMany({
@@ -184,6 +209,7 @@ export async function GET(request: NextRequest) {
         select: {
           userId: true,
           city: true,
+          region: true,
           country: true,
           deviceType: true,
           os: true,
@@ -250,7 +276,7 @@ export async function GET(request: NextRequest) {
 
       return {
         userId: String(userId), // 确保 userId 是字符串类型
-        city: event.city || event.country || 'Unknown',
+        city: normalizeRegionName(event),
         deviceType: device,
         browser: event.browser || 'Unknown',
         localTime,
