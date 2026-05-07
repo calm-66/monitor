@@ -194,7 +194,7 @@ function renderPieLabel(props: PieLabelProps) {
   const { cx, cy, midAngle, innerRadius, outerRadius, percent, name, index } = props;
   
   // 计算标签位置（在饼图外部，距离圆心更远）
-  const labelRadius = outerRadius + 60; // 标签在饼图外部 60px
+  const labelRadius = outerRadius + 36;
   const x = cx + labelRadius * Math.cos(-midAngle * (Math.PI / 180));
   const y = cy + labelRadius * Math.sin(-midAngle * (Math.PI / 180));
   
@@ -209,7 +209,7 @@ function renderPieLabel(props: PieLabelProps) {
       textAnchor={x > cx ? 'start' : 'end'}
       dominantBaseline="middle"
       fontWeight="bold"
-      fontSize="12"
+      fontSize="11"
     >
       {`${name}: ${(percent * 100).toFixed(0)}%`}
     </text>
@@ -218,7 +218,7 @@ function renderPieLabel(props: PieLabelProps) {
 
 function renderClickablePieLabel(props: PieLabelProps, onClick: (name: string) => void) {
   const { cx, cy, midAngle, outerRadius, percent, name, index } = props;
-  const labelRadius = outerRadius + 60;
+  const labelRadius = outerRadius + 36;
   const x = cx + labelRadius * Math.cos(-midAngle * (Math.PI / 180));
   const y = cy + labelRadius * Math.sin(-midAngle * (Math.PI / 180));
   const sectorColor = COLORS[index % COLORS.length];
@@ -231,7 +231,7 @@ function renderClickablePieLabel(props: PieLabelProps, onClick: (name: string) =
       textAnchor={x > cx ? 'start' : 'end'}
       dominantBaseline="middle"
       fontWeight="bold"
-      fontSize="12"
+      fontSize="11"
       onClick={() => onClick(name)}
       style={{ cursor: 'pointer' }}
     >
@@ -570,23 +570,23 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
-      <div className="flex gap-8">
+    <main className="min-h-screen overflow-x-hidden bg-gray-50 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <div className="w-full">
         {/* 主内容区域 */}
-        <div className="flex-1">
-          <div className="max-w-6xl mx-auto">
+        <div className="min-w-0">
+          <div className="mx-auto w-full max-w-6xl">
             {/* 头部 */}
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{projectName || 'Dashboard'}</h1>
+            <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h1 className="break-words text-2xl font-bold text-gray-900 sm:text-3xl">{projectName || 'Dashboard'}</h1>
                 <p className="text-gray-500 text-sm mt-1">
                   {getCurrentMonthStr()}
                 </p>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
                 <a
                   href={`/dashboard/${projectId}/feedback`}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2"
+                  className="flex items-center justify-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 sm:px-4"
                 >
                   <span>💬</span>
                   <span>Feedback</span>
@@ -594,13 +594,13 @@ export default function DashboardPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 sm:px-4"
                 >
                   {loading ? 'Loading...' : 'Refresh'}
                 </button>
                 <a
                   href="/"
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  className="col-span-2 rounded-md bg-gray-200 px-3 py-2 text-center text-sm text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 sm:col-span-1 sm:px-4"
                 >
                   Back to Projects
                 </a>
@@ -626,9 +626,9 @@ export default function DashboardPage() {
             {stats && (
               <>
                 {/* 统计卡片 */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:mb-8 xl:grid-cols-4">
                   {/* 注册用户数（外部 API） */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="rounded-lg bg-white p-5 shadow-md sm:p-6">
                     <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {stats.externalUserStats?.totalUsers ?? '-'}
@@ -649,7 +649,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* 当日 PV */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="rounded-lg bg-white p-5 shadow-md sm:p-6">
                     <h3 className="text-sm font-medium text-gray-500">Page Views</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {stats.todayPV ?? '-'}
@@ -658,7 +658,7 @@ export default function DashboardPage() {
 
                   {/* 每日访问用户数（UV） - 可点击 */}
                   <div 
-                    className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200 border-2 border-transparent hover:border-green-500"
+                    className="cursor-pointer rounded-lg border-2 border-transparent bg-white p-5 shadow-md transition-shadow duration-200 hover:border-green-500 hover:shadow-lg sm:p-6"
                     onClick={() => handleCardClick('uv')}
                   >
                     <h3 className="text-sm font-medium text-gray-500">Unique Visitors</h3>
@@ -674,7 +674,7 @@ export default function DashboardPage() {
 
                   {/* 每日登录用户数 - 可点击 */}
                   <div 
-                    className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200 border-2 border-transparent hover:border-purple-500"
+                    className="cursor-pointer rounded-lg border-2 border-transparent bg-white p-5 shadow-md transition-shadow duration-200 hover:border-purple-500 hover:shadow-lg sm:p-6"
                     onClick={() => handleCardClick('active')}
                   >
                     <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
@@ -694,10 +694,10 @@ export default function DashboardPage() {
                 </div>
 
                 {/* 图表 - 每日访问用户数和每日登录用户数 */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
                   {/* 每日访问用户数（PV）柱状图 */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Page Views ({getCurrentMonthStr()})</h3>
+                  <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
+                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Page Views ({getCurrentMonthStr()})</h3>
                     {stats.viewsByDay && stats.viewsByDay.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={fillMissingDates(
@@ -730,8 +730,8 @@ export default function DashboardPage() {
                   </div>
 
                   {/* 每日独立访客数（UV）柱状图 - 可点击 */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
+                  <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
+                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
                     {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={fillMissingDates(
@@ -770,8 +770,8 @@ export default function DashboardPage() {
                   </div>
 
                   {/* 每日登录用户数柱状图 - 可点击 */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Daily Active Users ({getCurrentMonthStr()})</h3>
+                  <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
+                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Active Users ({getCurrentMonthStr()})</h3>
                     {stats.dailyActiveUsers && stats.dailyActiveUsers.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={fillMissingDates(
@@ -810,8 +810,8 @@ export default function DashboardPage() {
                   </div>
 
                   {/* IP 地址解析饼状图 - 显示已登录用户的地区分布 */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Unique Visitors Locations (Top 10 Regions, {getCurrentMonthStr()})</h3>
+                  <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
+                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Unique Visitors Locations (Top 10 Regions, {getCurrentMonthStr()})</h3>
                     {stats.activeUsersByRegion && stats.activeUsersByRegion.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
@@ -848,14 +848,14 @@ export default function DashboardPage() {
 
         {/* 右侧详细信息面板 */}
         {selectedCard && (
-          <div className="fixed right-0 top-0 h-full w-[700px] bg-white shadow-2xl border-l border-gray-200 overflow-hidden flex flex-col z-50">
+          <div className="fixed inset-0 z-50 flex h-full max-w-full flex-col overflow-hidden bg-white shadow-2xl sm:left-auto sm:w-[700px] sm:border-l sm:border-gray-200">
             {/* 面板头部 */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-200 flex-shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">
+            <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-gray-200 p-4 sm:items-center sm:p-6">
+              <div className="min-w-0">
+                <h2 className="break-words text-lg font-bold text-gray-900 sm:text-xl">
                   {getPanelTitle()}
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="mt-1 text-sm text-gray-500">
                   {userDetails.length} users found
                 </p>
               </div>
@@ -880,12 +880,12 @@ export default function DashboardPage() {
                   No user data available
                 </div>
               ) : (
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   {/* 表格区域 */}
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">User List</h3>
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <table className="w-full">
+                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                      <table className="min-w-[620px] w-full">
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
