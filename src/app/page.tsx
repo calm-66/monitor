@@ -209,7 +209,7 @@ export default function Home() {
   // 检查 session 中，显示登录弹窗
   if (isCheckingSession) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-50">
+      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-500">Checking session...</p>
@@ -221,9 +221,9 @@ export default function Home() {
   // 未登录时显示登录表单
   if (!isLoggedIn) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-100 to-purple-100">
-        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-          <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 px-4 py-8">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+          <h1 className="mb-2 text-center text-2xl font-bold text-gray-800 sm:text-3xl">
             Monitor Dashboard
           </h1>
           <p className="text-center text-gray-500 mb-6">
@@ -266,14 +266,14 @@ export default function Home() {
 
   // 已登录时显示项目列表
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Monitor Platform</h1>
-          <div className="flex items-center space-x-4">
+    <main className="min-h-screen overflow-x-hidden bg-gray-50 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="break-words text-3xl font-bold text-gray-900 sm:text-4xl">Monitor Platform</h1>
+          <div className="flex items-center">
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+              className="rounded-md bg-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-300 sm:text-base"
             >
               退出登录
             </button>
@@ -281,8 +281,8 @@ export default function Home() {
         </div>
 
         {/* 创建项目表单 */}
-        <section className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Create New Project</h2>
+        <section className="mb-6 rounded-lg bg-white p-5 shadow-md sm:mb-8 sm:p-6">
+          <h2 className="mb-4 text-xl font-semibold text-gray-800">Create New Project</h2>
           <form onSubmit={handleCreateProject} className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -294,7 +294,7 @@ export default function Home() {
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="my-project"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 pattern="[a-zA-Z0-9-_]+"
                 title="Only letters, numbers, hyphens, and underscores allowed"
               />
@@ -309,7 +309,7 @@ export default function Home() {
                 value={newProjectDescription}
                 onChange={(e) => setNewProjectDescription(e.target.value)}
                 placeholder="Optional description"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -322,12 +322,12 @@ export default function Home() {
                 value={newProjectDomain}
                 onChange={(e) => setNewProjectDomain(e.target.value)}
                 placeholder="usonly-preview.vercel.app or usonly.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-auto"
             >
               Create Project
             </button>
@@ -347,8 +347,8 @@ export default function Home() {
         )}
 
         {/* 项目列表 */}
-        <section className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Projects</h2>
+        <section className="rounded-lg bg-white p-5 shadow-md sm:p-6">
+          <h2 className="mb-4 text-xl font-semibold text-gray-800">Projects</h2>
           {loading ? (
             <p className="text-gray-500">Loading...</p>
           ) : projects.length === 0 ? (
@@ -358,55 +358,55 @@ export default function Home() {
               {projects.map((project) => (
                 <div
                   key={project.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900">{project.name}</h3>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words text-lg font-medium text-gray-900">{project.name}</h3>
                       {project.description && (
-                        <p className="text-gray-500 text-sm mt-1">{project.description}</p>
+                        <p className="mt-1 break-words text-sm text-gray-500">{project.description}</p>
                       )}
-                      <div className="text-gray-500 text-sm mt-1">
+                      <div className="mt-1 text-sm text-gray-500">
                         {project.domain && (
-                          <p>Domain: {project.domain}</p>
+                          <p className="break-words">Domain: {project.domain}</p>
                         )}
                       </div>
                       <div className="mt-3 space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-500 min-w-[80px]">Project ID:</span>
-                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700 flex-1 truncate">
+                        <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] items-center gap-2">
+                          <span className="text-sm text-gray-500">Project ID:</span>
+                          <code className="min-w-0 truncate rounded bg-gray-100 px-2 py-1 text-sm text-gray-700">
                             {project.id}
                           </code>
                           <button
                             onClick={() => copyProjectId(project.id)}
-                            className="text-blue-600 hover:text-blue-800 text-sm whitespace-nowrap"
+                            className="whitespace-nowrap text-sm text-blue-600 hover:text-blue-800"
                           >
                             Copy
                           </button>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-500 min-w-[80px]">API Key:</span>
-                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700 flex-1 truncate">
+                        <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] items-center gap-2">
+                          <span className="text-sm text-gray-500">API Key:</span>
+                          <code className="min-w-0 truncate rounded bg-gray-100 px-2 py-1 text-sm text-gray-700">
                             {project.apiKey.substring(0, 20)}...
                           </code>
                           <button
                             onClick={() => copyApiKey(project.apiKey)}
-                            className="text-blue-600 hover:text-blue-800 text-sm whitespace-nowrap"
+                            className="whitespace-nowrap text-sm text-blue-600 hover:text-blue-800"
                           >
                             Copy
                           </button>
                         </div>
                       </div>
-                      <div className="mt-3 flex items-center space-x-4">
+                      <div className="mt-3 flex flex-wrap items-center gap-4">
                         <a
                           href={`/dashboard/${project.id}`}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
                         >
                           View Dashboard →
                         </a>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end space-y-2">
+                    <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-start sm:space-y-2">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         project.isActive
                           ? 'bg-green-100 text-green-800'

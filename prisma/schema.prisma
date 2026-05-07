@@ -81,6 +81,17 @@ model Event {
   @@index([country]) // 按地区统计
 }
 
+// 反馈已读状态表 - 记录 Dashboard 中已查看的 feedback 事件
+model FeedbackRead {
+  id        String   @id @default(cuid())
+  projectId String
+  eventId   String   @unique
+  readAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
 // 支付事件表 - 记录 UsOnly 支付事件
 model PaymentEvent {
   id             String   @id @default(cuid())

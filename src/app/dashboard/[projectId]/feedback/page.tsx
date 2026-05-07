@@ -151,6 +151,32 @@ export default function FeedbackPage() {
     await loadFeedbacks();
   };
 
+  const markFeedbackAsRead = useCallback(async (feedback: Feedback) => {
+    setSelectedFeedback({ ...feedback, isRead: true });
+
+    if (feedback.isRead || !apiKey) return;
+
+    setFeedbacks(prev =>
+      prev.map(item =>
+        item.id === feedback.id ? { ...item, isRead: true } : item
+      )
+    );
+
+    try {
+      await fetch('/api/feedback/read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+          'X-Project-ID': projectId,
+        },
+        body: JSON.stringify({ feedbackId: feedback.id }),
+      });
+    } catch (err) {
+      console.error('Failed to mark feedback as read:', err);
+    }
+  }, [projectId, apiKey]);
+
   // Get type config
   const getTypeConfig = (type: string) => {
     return FEEDBACK_TYPE_CONFIG[type] || FEEDBACK_TYPE_CONFIG.other;
@@ -277,11 +303,14 @@ export default function FeedbackPage() {
                   <div
                     key={feedback.id}
                     className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => setSelectedFeedback(feedback)}
+                    onClick={() => markFeedbackAsRead(feedback)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
+                          {!feedback.isRead && (
+                            <span className="h-2.5 w-2.5 rounded-full bg-red-500" title="Unread" />
+                          )}
                           <span className="text-xl">{typeConfig.icon}</span>
                           <span 
                             className="px-2 py-1 text-xs font-medium rounded"

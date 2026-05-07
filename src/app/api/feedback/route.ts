@@ -96,12 +96,24 @@ export async function GET(request: NextRequest) {
         (f.metadata as any).type === type
       );
     }
+
+    const readRows = await prisma.feedbackRead.findMany({
+      where: {
+        projectId,
+        eventId: { in: filteredFeedbacks.map(f => f.id) }
+      },
+      select: {
+        eventId: true
+      }
+    });
+    const readEventIds = new Set(readRows.map(row => row.eventId));
     
     // Transform data for frontend
     const formattedFeedbacks = filteredFeedbacks.map(f => ({
       id: f.id,
       type: (f.metadata as any)?.type || 'other',
       content: (f.metadata as any)?.content || '',
+      isRead: readEventIds.has(f.id),
       userEmail: (f.metadata as any)?.userEmail || undefined,
       userId: f.userId,
       timestamp: (f.metadata as any)?.timestamp || f.createdAt,

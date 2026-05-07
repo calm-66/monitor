@@ -275,6 +275,7 @@ export default function DashboardPage() {
   const [projectName, setProjectName] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [projectInfo, setProjectInfo] = useState<Project | null>(null);
+  const [feedbackCount, setFeedbackCount] = useState(0);
 
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
@@ -386,6 +387,28 @@ export default function DashboardPage() {
     }
   }, [projectId, startDate, endDate, apiKey]);
 
+  const loadFeedbackCount = useCallback(async () => {
+    if (!apiKey) return;
+
+    try {
+      const response = await fetch('/api/feedback/read', {
+        headers: {
+          'X-API-Key': apiKey,
+          'X-Project-ID': projectId,
+        },
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.success) {
+        setFeedbackCount(data.data.unreadCount || 0);
+      }
+    } catch (err) {
+      console.error('Failed to load feedback count:', err);
+    }
+  }, [projectId, apiKey]);
+
   // 加载用户详细信息
   const loadUserDetails = useCallback(async (type: 'uv' | 'active', date?: string, region?: string) => {
     setUserDetailsLoading(true);
@@ -477,8 +500,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (apiKey) {
       loadStats();
+      loadFeedbackCount();
     }
-  }, [apiKey, loadStats]);
+  }, [apiKey, loadStats, loadFeedbackCount]);
 
   // 加载外部用户统计（初始加载 + 每 5 分钟自动刷新）
   useEffect(() => {
@@ -512,6 +536,7 @@ export default function DashboardPage() {
   const handleRefresh = async () => {
     setLoading(true);
     setError('');
+    loadFeedbackCount();
     
     try {
       // 同时加载统计数据和外部用户统计
@@ -586,10 +611,15 @@ export default function DashboardPage() {
               <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
                 <a
                   href={`/dashboard/${projectId}/feedback`}
-                  className="flex items-center justify-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 sm:px-4"
+                  className="relative flex items-center justify-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 sm:px-4"
                 >
                   <span>💬</span>
                   <span>Feedback</span>
+                  {feedbackCount > 0 && (
+                    <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-bold leading-none text-white ring-2 ring-white">
+                      {feedbackCount > 99 ? '99+' : feedbackCount}
+                    </span>
+                  )}
                 </a>
                 <button
                   onClick={handleRefresh}
@@ -936,7 +966,7 @@ export default function DashboardPage() {
                   {/* 饼图区域 - 垂直排列 3 行 */}
                   <div className="flex flex-col gap-4">
                     {/* City 分布饼图 */}
-                    <div className="border border-gray-200 rounded-lg p-4">
+                    <div className={`${selectedRegion ? 'hidden' : ''} border border-gray-200 rounded-lg p-4`}>
                       <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">City Distribution</h3>
                       {cityDistribution.length > 0 ? (
                         <ResponsiveContainer width="100%" height={300}>

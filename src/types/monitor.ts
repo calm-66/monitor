@@ -198,6 +198,7 @@ export interface Feedback {
   id: string;
   type: 'suggestion' | 'bug' | 'other';
   content: string;
+  isRead?: boolean;
   userEmail?: string | null;  // 用户邮箱（可选）
   userId: string | null;
   timestamp: string | Date;
