@@ -254,11 +254,9 @@ export default function DashboardPage() {
 
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
+    return getCurrentMonthStart();
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => getTodayStr());
 
   // 用户详细信息面板状态
   const [selectedCard, setSelectedCard] = useState<'uv' | 'active' | null>(null);
