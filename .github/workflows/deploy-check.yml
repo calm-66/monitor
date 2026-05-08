@@ -17,10 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +29,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Select database URL
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" >> "$GITHUB_ENV"
+          elif [ "${GITHUB_REF_NAME}" = "dev" ]; then
+            echo "DATABASE_URL=${{ secrets.DEV_DATABASE_URL }}" >> "$GITHUB_ENV"
+          else
+            echo "Unsupported branch for database migrations: ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+          echo "DASHBOARD_PASSWORD=${{ secrets.DASHBOARD_PASSWORD }}" >> "$GITHUB_ENV"
 
       - name: Run database migrations
         run: npm run db:deploy
