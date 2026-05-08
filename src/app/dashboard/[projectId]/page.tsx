@@ -240,6 +240,46 @@ function renderClickablePieLabel(props: PieLabelProps, onClick: (name: string) =
   );
 }
 
+function RegionPieLegend({
+  data,
+  onRegionClick,
+}: {
+  data: DistributionData[];
+  onRegionClick: (name: string) => void;
+}) {
+  const total = data.reduce((sum, item) => sum + item.count, 0);
+
+  return (
+    <div className="w-full space-y-1 sm:w-52">
+      {data.map((item, index) => {
+        const color = COLORS[index % COLORS.length];
+        const percent = total > 0 ? Math.round((item.count / total) * 100) : 0;
+
+        return (
+          <button
+            key={`${item.name}-${index}`}
+            type="button"
+            onClick={() => onRegionClick(item.name)}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title={`${item.name}: ${percent}% (${item.count})`}
+          >
+            <span
+              className="h-2.5 w-2.5 flex-shrink-0 rounded-sm"
+              style={{ backgroundColor: color }}
+            />
+            <span className="min-w-0 flex-1 truncate font-medium text-gray-700">
+              {item.name}
+            </span>
+            <span className="flex-shrink-0 tabular-nums text-gray-500">
+              {percent}%
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * 根据项目 domain 构建 UsOnly stats API URL
  * 处理用户可能输入的 https://、http://、/ 等前缀
@@ -843,27 +883,33 @@ export default function DashboardPage() {
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
                     <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Unique Visitors Locations (Top 10 Regions, {getCurrentMonthStr()})</h3>
                     {stats.activeUsersByRegion && stats.activeUsersByRegion.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                          <Pie
-                            data={stats.activeUsersByRegion}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={(props) => renderClickablePieLabel(props as PieLabelProps, handleRegionClick)}
-                            outerRadius={80}
-                            fill="#F59E0B"
-                            dataKey="count"
-                            onClick={(data) => handleRegionClick(data.name)}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            {stats.activeUsersByRegion.map((_, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="h-56 min-w-0 flex-1 sm:h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={stats.activeUsersByRegion}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={82}
+                                fill="#F59E0B"
+                                dataKey="count"
+                                onClick={(data) => handleRegionClick(data.name)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                {stats.activeUsersByRegion.map((_, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip content={PieTooltip} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <RegionPieLegend
+                          data={stats.activeUsersByRegion}
+                          onRegionClick={handleRegionClick}
+                        />
+                      </div>
                     ) : (
                       <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
                         No data available for this period
