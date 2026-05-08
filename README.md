@@ -128,11 +128,18 @@ The Monitor system is independent of the UsOnly user authentication system. UsOn
 3. Add environment variables in Vercel settings:
    - `DATABASE_URL`
    - `DASHBOARD_PASSWORD`
-4. Deploy
+4. Run database migrations with `npm run db:deploy` when schema changes are needed
+5. Deploy
 
 ### Database Migration
 
-Before deploying, run the SQL migration script in your production database:
+Run Prisma migrations separately from the Vercel build:
+
+```bash
+npm run db:deploy
+```
+
+For manual setup, run the SQL migration script in your production database:
 
 ```bash
 # Run the migration script in Neon Console
