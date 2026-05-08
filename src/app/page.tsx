@@ -280,60 +280,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 创建项目表单 */}
-        <section className="mb-6 rounded-lg bg-white p-5 shadow-md sm:mb-8 sm:p-6">
-          <h2 className="mb-4 text-xl font-semibold text-gray-800">Create New Project</h2>
-          <form onSubmit={handleCreateProject} className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Project Name *
-              </label>
-              <input
-                type="text"
-                id="name"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="my-project"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                pattern="[a-zA-Z0-9-_]+"
-                title="Only letters, numbers, hyphens, and underscores allowed"
-              />
-            </div>
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <input
-                type="text"
-                id="description"
-                value={newProjectDescription}
-                onChange={(e) => setNewProjectDescription(e.target.value)}
-                placeholder="Optional description"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
-                Domain
-              </label>
-              <input
-                type="text"
-                id="domain"
-                value={newProjectDomain}
-                onChange={(e) => setNewProjectDomain(e.target.value)}
-                placeholder="usonly-preview.vercel.app or usonly.com"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-auto"
-            >
-              Create Project
-            </button>
-          </form>
-        </section>
-
         {/* 消息提示 */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -347,12 +293,12 @@ export default function Home() {
         )}
 
         {/* 项目列表 */}
-        <section className="rounded-lg bg-white p-5 shadow-md sm:p-6">
+        <section className="mb-6 rounded-lg bg-white p-5 shadow-md sm:mb-8 sm:p-6">
           <h2 className="mb-4 text-xl font-semibold text-gray-800">Projects</h2>
           {loading ? (
             <p className="text-gray-500">Loading...</p>
           ) : projects.length === 0 ? (
-            <p className="text-gray-500">No projects yet. Create one above!</p>
+            <p className="text-gray-500">No projects yet. Create one below!</p>
           ) : (
             <div className="space-y-4">
               {projects.map((project) => (
@@ -429,6 +375,60 @@ export default function Home() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* 创建项目表单 */}
+        <section className="rounded-lg bg-white p-5 shadow-md sm:p-6">
+          <h2 className="mb-4 text-xl font-semibold text-gray-800">Create New Project</h2>
+          <form onSubmit={handleCreateProject} className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Project Name *
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="my-project"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                pattern="[a-zA-Z0-9-_]+"
+                title="Only letters, numbers, hyphens, and underscores allowed"
+              />
+            </div>
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <input
+                type="text"
+                id="description"
+                value={newProjectDescription}
+                onChange={(e) => setNewProjectDescription(e.target.value)}
+                placeholder="Optional description"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
+                Domain
+              </label>
+              <input
+                type="text"
+                id="domain"
+                value={newProjectDomain}
+                onChange={(e) => setNewProjectDomain(e.target.value)}
+                placeholder="usonly-preview.vercel.app or usonly.com"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-auto"
+            >
+              Create Project
+            </button>
+          </form>
         </section>
 
       </div>
