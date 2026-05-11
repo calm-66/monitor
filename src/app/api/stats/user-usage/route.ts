@@ -66,6 +66,89 @@ function normalizeLocation(event: { city: string | null; region: string | null; 
   return location;
 }
 
+function formatNullableDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return formatAsBeijingDateTime(date);
+}
+
+function normalizeContentStats(contentStats: any) {
+  if (!contentStats) return null;
+  return {
+    ...contentStats,
+    user: contentStats.user
+      ? {
+          ...contentStats.user,
+          createdAt: formatNullableDate(contentStats.user.createdAt),
+          lastLoginAt: formatNullableDate(contentStats.user.lastLoginAt),
+          pairedAt: formatNullableDate(contentStats.user.pairedAt),
+        }
+      : contentStats.user,
+    firstPostAt: formatNullableDate(contentStats.firstPostAt),
+    lastPostAt: formatNullableDate(contentStats.lastPostAt),
+    recentPosts: Array.isArray(contentStats.recentPosts)
+      ? contentStats.recentPosts.map((post: any) => ({
+          ...post,
+          archivedAt: formatNullableDate(post.archivedAt),
+          createdAt: formatNullableDate(post.createdAt),
+        }))
+      : [],
+  };
+}
+
+function buildExternalUserUsageUrl(domain: string | null, userId: string): string | null {
+  if (!domain) return null;
+  const cleanedDomain = domain.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  if (!cleanedDomain) return null;
+  return `https://${cleanedDomain}/api/monitor/user-usage?userId=${encodeURIComponent(userId)}`;
+}
+
+async function fetchUsOnlyContentStats(domain: string | null, apiKey: string, userId: string) {
+  const url = buildExternalUserUsageUrl(domain, userId);
+  if (!url) {
+    return {
+      contentStats: null,
+      contentStatsError: 'Project domain is not configured',
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        contentStats: null,
+        contentStatsError: `UsOnly API returned status ${response.status}`,
+      };
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+      return {
+        contentStats: null,
+        contentStatsError: data.error || 'Failed to load UsOnly content stats',
+      };
+    }
+
+    return {
+      contentStats: normalizeContentStats(data.data),
+      contentStatsError: null,
+    };
+  } catch (error) {
+    return {
+      contentStats: null,
+      contentStatsError: 'Failed to load UsOnly content stats',
+    };
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -197,13 +280,20 @@ export async function GET(request: NextRequest) {
 
     const lastSeenAt = events[0]?.createdAt || null;
     const firstSeenAt = events.length > 0 ? events[events.length - 1].createdAt : null;
+    const resolvedUsOnlyUserId = usOnlyUserId || (trimmed.startsWith('user_') ? withoutAccountPrefix : null);
+    const contentStatsResult = resolvedUsOnlyUserId
+      ? await fetchUsOnlyContentStats(project.domain, apiKey, resolvedUsOnlyUserId)
+      : {
+          contentStats: null,
+          contentStatsError: 'No UsOnly user ID was found for this query',
+        };
 
     return NextResponse.json({
       success: true,
       data: {
         inputUserId: trimmed,
         matchedUserIds: Array.from(matchedUserIds),
-        usOnlyUserId: usOnlyUserId || (trimmed.startsWith('user_') ? withoutAccountPrefix : null),
+        usOnlyUserId: resolvedUsOnlyUserId,
         monitorUserId,
         username,
         totalEvents,
@@ -232,6 +322,8 @@ export async function GET(request: NextRequest) {
           os: event.os,
           createdAt: formatAsBeijingDateTime(event.createdAt),
         })),
+        contentStats: contentStatsResult.contentStats,
+        contentStatsError: contentStatsResult.contentStatsError,
       }
     }, { headers: corsHeaders });
   } catch (error) {

@@ -151,6 +151,35 @@ export interface UserUsageRecentEvent {
   createdAt: string;
 }
 
+export interface UsOnlyContentStats {
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    createdAt: string;
+    lastLoginAt: string | null;
+    partnerId: string | null;
+    pairedAt: string | null;
+  };
+  totalPosts: number;
+  totalImages: number;
+  totalComments: number;
+  postsWithImages: number;
+  postsWithLocation: number;
+  archivedPosts: number;
+  firstPostAt: string | null;
+  lastPostAt: string | null;
+  recentPosts: Array<{
+    id: string;
+    title: string | null;
+    date: string;
+    imageCount: number;
+    location: string | null;
+    archivedAt: string | null;
+    createdAt: string;
+  }>;
+}
+
 export interface UserUsageSummary {
   inputUserId: string;
   matchedUserIds: string[];
@@ -169,6 +198,8 @@ export interface UserUsageSummary {
   locations: DistributionData[];
   eventsByDay: Array<{ date: string; count: number }>;
   recentEvents: UserUsageRecentEvent[];
+  contentStats: UsOnlyContentStats | null;
+  contentStatsError: string | null;
 }
 
 export interface UserUsageResponse {

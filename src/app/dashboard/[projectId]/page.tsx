@@ -864,13 +864,52 @@ export default function DashboardPage() {
 
                   {userUsage && (
                     <div className="mt-6 border-t border-gray-200 pt-5">
+                      <div className="mb-6">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <h4 className="text-sm font-semibold text-gray-700">UsOnly Content</h4>
+                          {userUsage.contentStatsError && (
+                            <span className="text-xs text-amber-600">{userUsage.contentStatsError}</span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                          <div className="rounded-md border border-gray-200 p-3">
+                            <p className="text-xs font-medium text-gray-500">Posts</p>
+                            <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.contentStats?.totalPosts ?? '-'}</p>
+                          </div>
+                          <div className="rounded-md border border-gray-200 p-3">
+                            <p className="text-xs font-medium text-gray-500">Images</p>
+                            <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.contentStats?.totalImages ?? '-'}</p>
+                          </div>
+                          <div className="rounded-md border border-gray-200 p-3">
+                            <p className="text-xs font-medium text-gray-500">Comments</p>
+                            <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.contentStats?.totalComments ?? '-'}</p>
+                          </div>
+                          <div className="rounded-md border border-gray-200 p-3">
+                            <p className="text-xs font-medium text-gray-500">Image Posts</p>
+                            <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.contentStats?.postsWithImages ?? '-'}</p>
+                          </div>
+                          <div className="rounded-md border border-gray-200 p-3">
+                            <p className="text-xs font-medium text-gray-500">Map Posts</p>
+                            <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.contentStats?.postsWithLocation ?? '-'}</p>
+                          </div>
+                          <div className="rounded-md border border-gray-200 p-3">
+                            <p className="text-xs font-medium text-gray-500">Archived</p>
+                            <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.contentStats?.archivedPosts ?? '-'}</p>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         <div>
                           <h4 className="text-sm font-semibold text-gray-700">Identity</h4>
                           <dl className="mt-3 space-y-2 text-sm">
                             <div>
                               <dt className="text-gray-500">Username</dt>
-                              <dd className="break-all font-medium text-gray-900">{userUsage.username || '-'}</dd>
+                              <dd className="break-all font-medium text-gray-900">{userUsage.contentStats?.user.username || userUsage.username || '-'}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-gray-500">Email</dt>
+                              <dd className="break-all font-mono text-xs text-gray-900">{userUsage.contentStats?.user.email || '-'}</dd>
                             </div>
                             <div>
                               <dt className="text-gray-500">UsOnly ID</dt>
@@ -901,6 +940,14 @@ export default function DashboardPage() {
                               <dd className="font-mono text-xs text-gray-900">{userUsage.lastSeenAt || '-'}</dd>
                             </div>
                             <div>
+                              <dt className="text-gray-500">First Post</dt>
+                              <dd className="font-mono text-xs text-gray-900">{userUsage.contentStats?.firstPostAt || '-'}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-gray-500">Last Post</dt>
+                              <dd className="font-mono text-xs text-gray-900">{userUsage.contentStats?.lastPostAt || '-'}</dd>
+                            </div>
+                            <div>
                               <dt className="text-gray-500">Top Location</dt>
                               <dd className="text-gray-900">{userUsage.locations[0]?.name || '-'}</dd>
                             </div>
@@ -925,6 +972,38 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
+
+                      {userUsage.contentStats?.recentPosts && userUsage.contentStats.recentPosts.length > 0 && (
+                        <div className="mt-6">
+                          <h4 className="mb-3 text-sm font-semibold text-gray-700">Recent Posts</h4>
+                          <div className="overflow-x-auto rounded-lg border border-gray-200">
+                            <table className="min-w-[680px] w-full">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Created</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Title</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Images</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Location</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Archived</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200 bg-white">
+                                {userUsage.contentStats.recentPosts.map((post) => (
+                                  <tr key={post.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 font-mono text-xs text-gray-900">{post.createdAt}</td>
+                                    <td className="px-4 py-3 font-mono text-xs text-gray-900">{post.date}</td>
+                                    <td className="max-w-[180px] truncate px-4 py-3 text-sm text-gray-900">{post.title || '-'}</td>
+                                    <td className="px-4 py-3 text-sm tabular-nums text-gray-900">{post.imageCount}</td>
+                                    <td className="max-w-[160px] truncate px-4 py-3 text-sm text-gray-900">{post.location || '-'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-900">{post.archivedAt ? 'Yes' : 'No'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="mt-6">
                         <h4 className="mb-3 text-sm font-semibold text-gray-700">Recent Events</h4>
