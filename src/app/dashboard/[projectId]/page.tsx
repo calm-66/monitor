@@ -806,7 +806,7 @@ export default function DashboardPage() {
                 </div>
 
                 <section className="mb-6 rounded-lg bg-white p-5 shadow-md sm:p-6 lg:mb-8">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">
                       <h3 className="text-base font-semibold text-gray-900">User Usage Lookup</h3>
                       <p className="mt-1 text-sm text-gray-500">
@@ -841,37 +841,14 @@ export default function DashboardPage() {
                     </div>
 
                     {userUsage && (
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[520px]">
-                        <div className="rounded-md bg-gray-50 p-3">
-                          <p className="text-xs font-medium text-gray-500">Events</p>
-                          <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.totalEvents}</p>
-                        </div>
-                        <div className="rounded-md bg-gray-50 p-3">
-                          <p className="text-xs font-medium text-gray-500">Page Views</p>
-                          <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.totalPageViews}</p>
-                        </div>
-                        <div className="rounded-md bg-gray-50 p-3">
-                          <p className="text-xs font-medium text-gray-500">Logins</p>
-                          <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.totalLogins}</p>
-                        </div>
-                        <div className="rounded-md bg-gray-50 p-3">
-                          <p className="text-xs font-medium text-gray-500">Active Days</p>
-                          <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.activeDays}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {userUsage && (
-                    <div className="mt-6 border-t border-gray-200 pt-5">
-                      <div className="mb-6">
-                        <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="lg:w-[560px] xl:w-[620px]">
+                        <div className="mb-2 flex items-center justify-between gap-3">
                           <h4 className="text-sm font-semibold text-gray-700">UsOnly Content</h4>
                           {userUsage.contentStatsError && (
                             <span className="text-xs text-amber-600">{userUsage.contentStatsError}</span>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                           <div className="rounded-md border border-gray-200 p-3">
                             <p className="text-xs font-medium text-gray-500">Posts</p>
                             <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.contentStats?.totalPosts ?? '-'}</p>
@@ -898,7 +875,11 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
+                    )}
+                  </div>
 
+                  {userUsage && (
+                    <div className="mt-6 border-t border-gray-200 pt-5">
                       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         <div>
                           <h4 className="text-sm font-semibold text-gray-700">Identity</h4>
