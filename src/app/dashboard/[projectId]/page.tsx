@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { StatsResponse, IpLimitStats, Project, UserDetail, DistributionData } from '@/types/monitor';
+import { StatsResponse, IpLimitStats, Project, UserDetail, DistributionData, UserUsageSummary } from '@/types/monitor';
 import {
   LineChart,
   Line,
@@ -333,6 +333,10 @@ export default function DashboardPage() {
   const [pageDistribution, setPageDistribution] = useState<DistributionData[]>([]);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
+  const [usageUserId, setUsageUserId] = useState('');
+  const [userUsage, setUserUsage] = useState<UserUsageSummary | null>(null);
+  const [userUsageLoading, setUserUsageLoading] = useState(false);
+  const [userUsageError, setUserUsageError] = useState('');
 
   // 日期范围结束
   const endDateStr = endDate;
@@ -530,6 +534,44 @@ export default function DashboardPage() {
       console.error('Failed to copy user ID:', err);
     }
   }, []);
+
+  const handleSearchUserUsage = useCallback(async () => {
+    const trimmedUserId = usageUserId.trim();
+    if (!trimmedUserId) {
+      setUserUsageError('Please enter a user ID');
+      setUserUsage(null);
+      return;
+    }
+
+    setUserUsageLoading(true);
+    setUserUsageError('');
+
+    try {
+      const response = await fetch(
+        `/api/stats/user-usage?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&userId=${encodeURIComponent(trimmedUserId)}`,
+        {
+          headers: {
+            'X-API-Key': apiKey,
+          },
+        }
+      );
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setUserUsage(null);
+        setUserUsageError(data.error || 'Failed to load user usage');
+        return;
+      }
+
+      setUserUsage(data.data);
+    } catch (err) {
+      console.error('Failed to load user usage:', err);
+      setUserUsage(null);
+      setUserUsageError('Failed to load user usage');
+    } finally {
+      setUserUsageLoading(false);
+    }
+  }, [apiKey, endDate, projectId, startDate, usageUserId]);
 
   // 加载项目信息
   useEffect(() => {
@@ -762,6 +804,166 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-400 mt-2">Click for details</p>
                   </div>
                 </div>
+
+                <section className="mb-6 rounded-lg bg-white p-5 shadow-md sm:p-6 lg:mb-8">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-semibold text-gray-900">User Usage Lookup</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Search by UsOnly user ID, user_ ID, or Monitor visitor ID within the selected date range.
+                      </p>
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                        <input
+                          type="text"
+                          value={usageUserId}
+                          onChange={(event) => setUsageUserId(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              handleSearchUserUsage();
+                            }
+                          }}
+                          placeholder="Enter user ID"
+                          className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 font-mono text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSearchUserUsage}
+                          disabled={userUsageLoading || !apiKey}
+                          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {userUsageLoading ? 'Searching...' : 'Search'}
+                        </button>
+                      </div>
+                      {userUsageError && (
+                        <p className="mt-2 text-sm text-red-600">{userUsageError}</p>
+                      )}
+                    </div>
+
+                    {userUsage && (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[520px]">
+                        <div className="rounded-md bg-gray-50 p-3">
+                          <p className="text-xs font-medium text-gray-500">Events</p>
+                          <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.totalEvents}</p>
+                        </div>
+                        <div className="rounded-md bg-gray-50 p-3">
+                          <p className="text-xs font-medium text-gray-500">Page Views</p>
+                          <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.totalPageViews}</p>
+                        </div>
+                        <div className="rounded-md bg-gray-50 p-3">
+                          <p className="text-xs font-medium text-gray-500">Logins</p>
+                          <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.totalLogins}</p>
+                        </div>
+                        <div className="rounded-md bg-gray-50 p-3">
+                          <p className="text-xs font-medium text-gray-500">Active Days</p>
+                          <p className="mt-1 text-2xl font-bold text-gray-900">{userUsage.activeDays}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {userUsage && (
+                    <div className="mt-6 border-t border-gray-200 pt-5">
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700">Identity</h4>
+                          <dl className="mt-3 space-y-2 text-sm">
+                            <div>
+                              <dt className="text-gray-500">Username</dt>
+                              <dd className="break-all font-medium text-gray-900">{userUsage.username || '-'}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-gray-500">UsOnly ID</dt>
+                              <dd className="break-all font-mono text-xs text-gray-900">{userUsage.usOnlyUserId || '-'}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-gray-500">Monitor ID</dt>
+                              <dd className="break-all font-mono text-xs text-gray-900">{userUsage.monitorUserId || '-'}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-gray-500">Matched IDs</dt>
+                              <dd className="break-all font-mono text-xs text-gray-900">
+                                {userUsage.matchedUserIds.length > 0 ? userUsage.matchedUserIds.join(', ') : '-'}
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700">Activity</h4>
+                          <dl className="mt-3 space-y-2 text-sm">
+                            <div>
+                              <dt className="text-gray-500">First Seen</dt>
+                              <dd className="font-mono text-xs text-gray-900">{userUsage.firstSeenAt || '-'}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-gray-500">Last Seen</dt>
+                              <dd className="font-mono text-xs text-gray-900">{userUsage.lastSeenAt || '-'}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-gray-500">Top Location</dt>
+                              <dd className="text-gray-900">{userUsage.locations[0]?.name || '-'}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-gray-500">Top Device</dt>
+                              <dd className="text-gray-900">{userUsage.devices[0]?.name || '-'}</dd>
+                            </div>
+                          </dl>
+                        </div>
+
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700">Top Pages</h4>
+                          <div className="mt-3 space-y-2">
+                            {userUsage.topPages.length > 0 ? userUsage.topPages.slice(0, 5).map((page) => (
+                              <div key={page.name} className="flex items-center justify-between gap-3 text-sm">
+                                <span className="min-w-0 truncate font-mono text-xs text-gray-900">{page.name}</span>
+                                <span className="flex-shrink-0 tabular-nums text-gray-500">{page.count}</span>
+                              </div>
+                            )) : (
+                              <p className="text-sm text-gray-400">No page data</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-6">
+                        <h4 className="mb-3 text-sm font-semibold text-gray-700">Recent Events</h4>
+                        {userUsage.recentEvents.length > 0 ? (
+                          <div className="overflow-x-auto rounded-lg border border-gray-200">
+                            <table className="min-w-[760px] w-full">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Time</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Event</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Page</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Location</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Device</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Browser</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200 bg-white">
+                                {userUsage.recentEvents.map((event) => (
+                                  <tr key={event.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 font-mono text-xs text-gray-900">{event.createdAt}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-900">{event.eventName || event.eventType}</td>
+                                    <td className="max-w-[180px] truncate px-4 py-3 font-mono text-xs text-blue-600">{event.pageUrl || '-'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-900">{event.city || event.region || event.country || '-'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-900">{event.deviceType || event.os || '-'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-900">{event.browser || '-'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-gray-200 py-8 text-center text-sm text-gray-400">
+                            No events found for this user in the selected date range
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </section>
 
                 {/* 图表 - 每日访问用户数和每日登录用户数 */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">

@@ -137,6 +137,45 @@ export interface DistributionData {
   count: number;
 }
 
+export interface UserUsageRecentEvent {
+  id: string;
+  eventType: string;
+  eventName: string | null;
+  pageUrl: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  createdAt: string;
+}
+
+export interface UserUsageSummary {
+  inputUserId: string;
+  matchedUserIds: string[];
+  usOnlyUserId: string | null;
+  monitorUserId: string | null;
+  username: string | null;
+  totalEvents: number;
+  totalPageViews: number;
+  totalLogins: number;
+  activeDays: number;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  topPages: DistributionData[];
+  devices: DistributionData[];
+  browsers: DistributionData[];
+  locations: DistributionData[];
+  eventsByDay: Array<{ date: string; count: number }>;
+  recentEvents: UserUsageRecentEvent[];
+}
+
+export interface UserUsageResponse {
+  success: boolean;
+  data: UserUsageSummary;
+}
+
 // 用户详细信息 API 响应
 export interface UserDetailsResponse {
   success: boolean;
