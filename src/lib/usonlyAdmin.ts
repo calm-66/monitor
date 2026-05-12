@@ -1,37 +1,36 @@
 type UsOnlyAdminRequest = {
+  baseUrl: string | null
   path: string
   method?: string
   body?: unknown
 }
 
-function getUsOnlyBaseUrl(): string {
-  return (process.env.USONLY_BASE_URL || '').replace(/\/+$/g, '')
+function normalizeBaseUrl(baseUrl: string | null): string {
+  const cleaned = (baseUrl || '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/g, '')
+  return cleaned ? `https://${cleaned}` : ''
 }
 
 function getUsOnlyAdminApiKey(): string {
   return process.env.USONLY_ADMIN_API_KEY || ''
 }
 
-export function isUsOnlyAdminConfigured(): boolean {
-  return Boolean(getUsOnlyBaseUrl() && getUsOnlyAdminApiKey())
-}
-
 export async function requestUsOnlyAdmin({
+  baseUrl,
   path,
   method = 'GET',
   body,
 }: UsOnlyAdminRequest): Promise<Response> {
-  const baseUrl = getUsOnlyBaseUrl()
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
   const apiKey = getUsOnlyAdminApiKey()
 
-  if (!baseUrl || !apiKey) {
+  if (!normalizedBaseUrl || !apiKey) {
     return Response.json(
       { success: false, error: 'UsOnly admin integration is not configured' },
       { status: 500 }
     )
   }
 
-  return fetch(`${baseUrl}${path}`, {
+  return fetch(`${normalizedBaseUrl}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',

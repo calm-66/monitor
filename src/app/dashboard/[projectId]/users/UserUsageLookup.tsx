@@ -7,6 +7,13 @@ type UserUsageLookupProps = {
   projectId: string;
 };
 
+type PartnerUsageState = {
+  expanded: boolean;
+  loading: boolean;
+  error: string;
+  usage: UserUsageSummary | null;
+};
+
 function getTodayStr(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -65,6 +72,12 @@ export default function UserUsageLookup({ projectId }: UserUsageLookupProps) {
   const [startDate, setStartDate] = useState(getCurrentMonthStart);
   const [endDate, setEndDate] = useState(getTodayStr);
   const [userUsage, setUserUsage] = useState<UserUsageSummary | null>(null);
+  const [partnerUsage, setPartnerUsage] = useState<PartnerUsageState>({
+    expanded: false,
+    loading: false,
+    error: '',
+    usage: null,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -108,19 +121,96 @@ export default function UserUsageLookup({ projectId }: UserUsageLookupProps) {
 
       if (!response.ok || !data.success) {
         setUserUsage(null);
+        setPartnerUsage({
+          expanded: false,
+          loading: false,
+          error: '',
+          usage: null,
+        });
         setError(data.error || 'Failed to load user usage');
         return;
       }
 
       setUserUsage(data.data);
+      setPartnerUsage({
+        expanded: false,
+        loading: false,
+        error: '',
+        usage: null,
+      });
     } catch (err) {
       console.error('Failed to load user usage:', err);
       setUserUsage(null);
+      setPartnerUsage({
+        expanded: false,
+        loading: false,
+        error: '',
+        usage: null,
+      });
       setError('Failed to load user usage');
     } finally {
       setLoading(false);
     }
   }, [apiKey, endDate, projectId, startDate, usageUserId]);
+
+  const togglePartnerUsage = useCallback(async () => {
+    const partnerId = userUsage?.contentStats?.user.partnerId;
+    if (!partnerId) return;
+
+    if (partnerUsage.expanded) {
+      setPartnerUsage((previous) => ({
+        ...previous,
+        expanded: false,
+      }));
+      return;
+    }
+
+    if (partnerUsage.usage || partnerUsage.error) {
+      setPartnerUsage((previous) => ({
+        ...previous,
+        expanded: true,
+      }));
+      return;
+    }
+
+    setPartnerUsage({
+      expanded: true,
+      loading: true,
+      error: '',
+      usage: null,
+    });
+
+    try {
+      const response = await fetch(
+        `/api/stats/user-usage?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&userId=${encodeURIComponent(partnerId)}`,
+        {
+          headers: {
+            'X-API-Key': apiKey,
+          },
+        }
+      );
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to load partner usage');
+      }
+
+      setPartnerUsage({
+        expanded: true,
+        loading: false,
+        error: '',
+        usage: data.data,
+      });
+    } catch (err: any) {
+      console.error('Failed to load partner usage:', err);
+      setPartnerUsage({
+        expanded: true,
+        loading: false,
+        error: err.message || 'Failed to load partner usage',
+        usage: null,
+      });
+    }
+  }, [apiKey, endDate, partnerUsage.error, partnerUsage.expanded, partnerUsage.usage, projectId, startDate, userUsage]);
 
   return (
     <section className="mb-6 rounded-lg bg-white p-5 shadow-md">
@@ -221,6 +311,25 @@ export default function UserUsageLookup({ projectId }: UserUsageLookupProps) {
                   <dt className="text-gray-500">Monitor ID</dt>
                   <dd className="break-all font-mono text-xs text-gray-900">{userUsage.monitorUserId || '-'}</dd>
                 </div>
+                {userUsage.contentStats?.user.partnerId && (
+                  <div>
+                    <dt className="text-gray-500">Partner</dt>
+                    <dd className="mt-1">
+                      <button
+                        type="button"
+                        onClick={togglePartnerUsage}
+                        disabled={partnerUsage.loading}
+                        className="rounded-md bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {partnerUsage.loading
+                          ? '查询中...'
+                          : partnerUsage.expanded
+                            ? '收起伴侣信息'
+                            : '查看伴侣信息'}
+                      </button>
+                    </dd>
+                  </div>
+                )}
               </dl>
             </div>
 
@@ -248,6 +357,50 @@ export default function UserUsageLookup({ projectId }: UserUsageLookupProps) {
 
             <InlineList title="Top Pages" items={userUsage.topPages} emptyText="No page data" />
           </div>
+
+          {partnerUsage.expanded && (
+            <div className="mt-6 rounded-lg border border-amber-100 bg-amber-50/40 p-4">
+              <h4 className="text-sm font-semibold text-gray-700">Partner Info</h4>
+              {partnerUsage.loading ? (
+                <p className="mt-3 text-sm text-amber-700">正在查询伴侣信息...</p>
+              ) : partnerUsage.error ? (
+                <p className="mt-3 text-sm text-red-600">{partnerUsage.error}</p>
+              ) : partnerUsage.usage ? (
+                <div className="mt-3 grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">Username</p>
+                    <p className="mt-1 break-all font-medium text-gray-900">
+                      {partnerUsage.usage.contentStats?.user.username || partnerUsage.usage.username || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">Email</p>
+                    <p className="mt-1 break-all font-mono text-xs text-gray-900">
+                      {partnerUsage.usage.contentStats?.user.email || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">UsOnly ID</p>
+                    <p className="mt-1 break-all font-mono text-xs text-gray-900">
+                      {partnerUsage.usage.usOnlyUserId || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">Last Seen</p>
+                    <p className="mt-1 font-mono text-xs text-gray-900">{partnerUsage.usage.lastSeenAt || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">Logins</p>
+                    <p className="mt-1 font-semibold text-gray-900">{partnerUsage.usage.totalLogins}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">Events</p>
+                    <p className="mt-1 font-semibold text-gray-900">{partnerUsage.usage.totalEvents}</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
 
           {userUsage.contentStats?.recentPosts && userUsage.contentStats.recentPosts.length > 0 && (
             <div className="mt-6">
