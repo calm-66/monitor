@@ -12,6 +12,7 @@ export interface ExternalUserStats {
     newUsersToday?: number;    // 今日新增用户（可选）
     newUsersThisWeek?: number; // 本周新增用户（可选）
     newUsersThisMonth?: number;// 本月新增用户（可选）
+    dailyRegisteredUsers?: DailyActiveUser[]; // 每日注册用户数（30 天）
     dailyActiveUsers?: DailyActiveUser[]; // 每日登录用户数（30 天）
   };
 }
@@ -90,6 +91,7 @@ export interface StatsResponse {
     newUsersToday?: number;
     newUsersThisWeek?: number;
     newUsersThisMonth?: number;
+    dailyRegisteredUsers?: DailyActiveUser[]; // 每日注册用户数（30 天）
     dailyActiveUsers?: DailyActiveUser[]; // 每日登录用户数（30 天）
   };
   // 环境列表（可选）
@@ -122,6 +124,15 @@ export interface UserDetail {
   browser: string;
   localTime: string;
   pageUrl: string | null;
+}
+
+export interface RegisteredUserDetail {
+  id: string;
+  username: string;
+  partnerId: string | null;
+  status: 'active' | 'disabled' | 'deletion_pending';
+  createdAt: string;
+  lastLoginAt: string | null;
 }
 
 // 分布数据（用于饼图）
@@ -209,6 +220,15 @@ export interface UserDetailsResponse {
     cityDistribution: DistributionData[];
     deviceDistribution: DistributionData[];
     pageDistribution?: DistributionData[]; // 页面路径分布
+  };
+}
+
+export interface RegisteredUsersResponse {
+  success: boolean;
+  data: {
+    date: string;
+    users: RegisteredUserDetail[];
+    total: number;
   };
 }
 

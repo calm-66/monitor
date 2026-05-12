@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { StatsResponse, IpLimitStats, Project, UserDetail, DistributionData } from '@/types/monitor';
+import { StatsResponse, IpLimitStats, Project, UserDetail, DistributionData, RegisteredUserDetail } from '@/types/monitor';
 import {
   LineChart,
   Line,
@@ -111,6 +111,25 @@ function getCurrentMonthStart(): string {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   return `${year}-${month}-01`;
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) return '-';
+
+  return new Date(value).toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getRegisteredUserStatusLabel(status: RegisteredUserDetail['status']): string {
+  if (status === 'disabled') return 'Disabled';
+  if (status === 'deletion_pending') return 'Deletion Pending';
+  return 'Active';
 }
 
 // 填充完整日期范围，缺失的日期填充 0 值（从当月 1 号到指定结束日期）
@@ -325,10 +344,11 @@ export default function DashboardPage() {
   const [endDate, setEndDate] = useState(() => getTodayStr());
 
   // 用户详细信息面板状态
-  const [selectedCard, setSelectedCard] = useState<'uv' | 'active' | null>(null);
+  const [selectedCard, setSelectedCard] = useState<'registered' | 'uv' | 'active' | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
+  const [registeredUserDetails, setRegisteredUserDetails] = useState<RegisteredUserDetail[]>([]);
   const [cityDistribution, setCityDistribution] = useState<DistributionData[]>([]);
   const [deviceDistribution, setDeviceDistribution] = useState<DistributionData[]>([]);
   const [pageDistribution, setPageDistribution] = useState<DistributionData[]>([]);
@@ -475,6 +495,31 @@ export default function DashboardPage() {
   }, [projectId, startDate, endDate, apiKey]);
 
   // 加载用户详细信息
+  const loadRegisteredUserDetails = useCallback(async (date: string) => {
+    setUserDetailsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/stats/registered-users?projectId=${projectId}&date=${date}`,
+        {
+          headers: {
+            'X-API-Key': apiKey,
+          },
+        }
+      );
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.success) {
+        setRegisteredUserDetails(data.data.users || []);
+      }
+    } catch (err) {
+      console.error('Failed to load registered user details:', err);
+    } finally {
+      setUserDetailsLoading(false);
+    }
+  }, [projectId, apiKey]);
+
   const loadUserDetails = useCallback(async (type: 'uv' | 'active', date?: string, region?: string) => {
     setUserDetailsLoading(true);
     try {
@@ -514,14 +559,39 @@ export default function DashboardPage() {
     setSelectedCard(type);
     setSelectedDate(today);
     setSelectedRegion(null);
+    setRegisteredUserDetails([]);
     loadUserDetails(type, today);
   }, [loadUserDetails]);
 
+  const handleRegisteredCardClick = useCallback(() => {
+    const today = getTodayStr();
+    setSelectedCard('registered');
+    setSelectedDate(today);
+    setSelectedRegion(null);
+    setUserDetails([]);
+    setCityDistribution([]);
+    setDeviceDistribution([]);
+    setPageDistribution([]);
+    loadRegisteredUserDetails(today);
+  }, [loadRegisteredUserDetails]);
+
   // 处理柱状图点击
+  const handleRegisteredBarClick = useCallback((date: string) => {
+    setSelectedCard('registered');
+    setSelectedDate(date);
+    setSelectedRegion(null);
+    setUserDetails([]);
+    setCityDistribution([]);
+    setDeviceDistribution([]);
+    setPageDistribution([]);
+    loadRegisteredUserDetails(date);
+  }, [loadRegisteredUserDetails]);
+
   const handleBarClick = useCallback((type: 'uv' | 'active', date: string) => {
     setSelectedCard(type);
     setSelectedDate(date);
     setSelectedRegion(null);
+    setRegisteredUserDetails([]);
     loadUserDetails(type, date);
   }, [loadUserDetails]);
 
@@ -529,6 +599,7 @@ export default function DashboardPage() {
     setSelectedCard('uv');
     setSelectedDate(null);
     setSelectedRegion(region);
+    setRegisteredUserDetails([]);
     loadUserDetails('uv', undefined, region);
   }, [loadUserDetails]);
 
@@ -538,6 +609,7 @@ export default function DashboardPage() {
     setSelectedDate(null);
     setSelectedRegion(null);
     setUserDetails([]);
+    setRegisteredUserDetails([]);
     setCityDistribution([]);
     setDeviceDistribution([]);
     setPageDistribution([]);
@@ -650,6 +722,14 @@ export default function DashboardPage() {
 
   // 获取面板标题
   const getPanelTitle = () => {
+    if (selectedCard === 'registered') {
+      if (!selectedDate) return 'Registered Users';
+      const today = getTodayStr();
+      return selectedDate === today
+        ? `Registered Users - Today (${selectedDate})`
+        : `Registered Users - ${selectedDate}`;
+    }
+
     const baseTitle = selectedCard === 'uv' ? 'Unique Visitors' : 'Active Users';
     if (selectedRegion) return `${baseTitle} - ${selectedRegion} (${getCurrentMonthStr()})`;
     if (!selectedDate) return baseTitle;
@@ -660,6 +740,10 @@ export default function DashboardPage() {
     }
     return `${baseTitle} - ${selectedDate}`;
   };
+
+  const panelUserCount = selectedCard === 'registered'
+    ? registeredUserDetails.length
+    : userDetails.length;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-gray-50 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
@@ -731,7 +815,10 @@ export default function DashboardPage() {
                 {/* 统计卡片 */}
                 <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:mb-8 xl:grid-cols-3">
                   {/* 注册用户数（外部 API） */}
-                  <div className="rounded-lg bg-white p-5 shadow-md sm:p-6">
+                  <div
+                    className="cursor-pointer rounded-lg border-2 border-transparent bg-white p-5 shadow-md transition-shadow duration-200 hover:border-blue-500 hover:shadow-lg sm:p-6"
+                    onClick={handleRegisteredCardClick}
+                  >
                     <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {stats.externalUserStats?.totalUsers ?? '-'}
@@ -747,6 +834,7 @@ export default function DashboardPage() {
                         {stats.externalUserStats.newUsersThisMonth !== undefined && (
                           <p>This Month: +{stats.externalUserStats.newUsersThisMonth}</p>
                         )}
+                        <p className="text-gray-400">Click for details</p>
                       </div>
                     )}
                   </div>
@@ -783,6 +871,45 @@ export default function DashboardPage() {
                 {/* 图表 - 每日访问用户数和每日登录用户数 */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
                   {/* 每日独立访客数（UV）柱状图 - 可点击 */}
+                  <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
+                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Registered Users ({getCurrentMonthStr()})</h3>
+                    {stats.externalUserStats?.dailyRegisteredUsers && stats.externalUserStats.dailyRegisteredUsers.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={fillMissingDates(
+                          filterCurrentMonth(stats.externalUserStats.dailyRegisteredUsers),
+                          startDate,
+                          endDate
+                        )}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickFormatter={formatShortDate}
+                            ticks={getXAxisTicks(fillMissingDates(
+                              filterCurrentMonth(stats.externalUserStats.dailyRegisteredUsers),
+                              startDate,
+                              endDate
+                            ))}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip content={(props) => <CustomTooltip {...props} color="#3B82F6" />} />
+                          <Legend />
+                          <Bar
+                            dataKey="count"
+                            fill="#3B82F6"
+                            name="Registered Users"
+                            onClick={(data) => handleRegisteredBarClick(data.date)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+                        No data available for this period
+                      </div>
+                    )}
+                  </div>
+
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
                     <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
                     {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
@@ -915,7 +1042,7 @@ export default function DashboardPage() {
                   {getPanelTitle()}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  {userDetails.length} users found
+                  {panelUserCount} users found
                 </p>
               </div>
               <button
@@ -934,9 +1061,52 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-center h-full">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-              ) : userDetails.length === 0 ? (
+              ) : panelUserCount === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-400">
                   No user data available
+                </div>
+              ) : selectedCard === 'registered' ? (
+                <div className="p-4 sm:p-6">
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">User List</h3>
+                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                      <table className="min-w-[760px] w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paired</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registered At</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {registeredUserDetails.map((user) => (
+                            <tr key={user.id} className="hover:bg-gray-50">
+                              <td
+                                className="px-4 py-3 text-sm font-mono cursor-pointer hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                onClick={() => handleCopyUserId(user.id)}
+                                title="Click to copy full User ID"
+                              >
+                                <span className="text-gray-900">
+                                  {user.id.slice(0, 10)}...
+                                  {copiedUserId === user.id && (
+                                    <span className="ml-1 text-xs text-green-600 font-normal">Copied!</span>
+                                  )}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{user.username}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{getRegisteredUserStatusLabel(user.status)}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{user.partnerId ? 'Yes' : 'No'}</td>
+                              <td className="px-4 py-3 text-xs font-mono text-gray-900">{formatDateTime(user.createdAt)}</td>
+                              <td className="px-4 py-3 text-xs font-mono text-gray-900">{formatDateTime(user.lastLoginAt)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="p-4 sm:p-6">
