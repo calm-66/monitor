@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import UserUsageLookup from './UserUsageLookup';
 
@@ -24,6 +24,13 @@ type UsOnlyUser = {
 type PendingAction = {
   user: UsOnlyUser;
   action: 'disable' | 'enable' | 'forceDelete';
+};
+
+type PartnerLookupState = {
+  expanded: boolean;
+  loading: boolean;
+  error: string;
+  partner: UsOnlyUser | null;
 };
 
 function getSessionToken(): string {
@@ -71,6 +78,7 @@ export default function UsOnlyUsersPage() {
   const [reason, setReason] = useState('');
   const [confirmText, setConfirmText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [partnerLookups, setPartnerLookups] = useState<Record<string, PartnerLookupState>>({});
 
   const canSubmitAction = useMemo(() => {
     if (!pendingAction) return false;
@@ -135,6 +143,81 @@ export default function UsOnlyUsersPage() {
     setPendingAction(null);
     setReason('');
     setConfirmText('');
+  };
+
+  const togglePartner = async (user: UsOnlyUser) => {
+    if (!user.partnerId) return;
+
+    const current = partnerLookups[user.id];
+    if (current?.expanded) {
+      setPartnerLookups((previous) => ({
+        ...previous,
+        [user.id]: {
+          ...current,
+          expanded: false,
+        },
+      }));
+      return;
+    }
+
+    if (current?.partner || current?.error) {
+      setPartnerLookups((previous) => ({
+        ...previous,
+        [user.id]: {
+          ...current,
+          expanded: true,
+        },
+      }));
+      return;
+    }
+
+    setPartnerLookups((previous) => ({
+      ...previous,
+      [user.id]: {
+        expanded: true,
+        loading: true,
+        error: '',
+        partner: null,
+      },
+    }));
+
+    try {
+      const res = await fetch(`/api/usonly-admin/users?q=${encodeURIComponent(user.partnerId)}`, {
+        headers: {
+          'X-Monitor-Session-Token': getSessionToken(),
+        },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '查询伴侣信息失败');
+      }
+
+      const partner = (data.users || []).find((item: UsOnlyUser) => item.id === user.partnerId) || null;
+      if (!partner) {
+        throw new Error('没有找到伴侣信息');
+      }
+
+      setPartnerLookups((previous) => ({
+        ...previous,
+        [user.id]: {
+          expanded: true,
+          loading: false,
+          error: '',
+          partner,
+        },
+      }));
+    } catch (err: any) {
+      setPartnerLookups((previous) => ({
+        ...previous,
+        [user.id]: {
+          expanded: true,
+          loading: false,
+          error: err.message || '查询伴侣信息失败',
+          partner: null,
+        },
+      }));
+    }
   };
 
   const submitAction = async () => {
@@ -255,66 +338,125 @@ export default function UsOnlyUsersPage() {
                     <tbody className="divide-y divide-gray-200 bg-white">
                       {users.map((user) => {
                         const status = getUserStatus(user);
+                        const partnerLookup = partnerLookups[user.id];
 
                         return (
-                          <tr key={user.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3">
-                              <div className="font-medium text-gray-900">{user.username}</div>
-                              <div className="text-sm text-gray-600">{user.email}</div>
-                              <div className="mt-1 font-mono text-xs text-gray-400">{user.id}</div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}>
-                                {status.label}
-                              </span>
-                              {user.disabledReason && (
-                                <div className="mt-1 max-w-[220px] truncate text-xs text-gray-500" title={user.disabledReason}>
-                                  {user.disabledReason}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {user.isAdmin ? '管理员' : '普通用户'}
-                            </td>
-                            <td className="px-4 py-3 text-xs text-gray-600">
-                              <div>创建：{formatDateTime(user.createdAt)}</div>
-                              <div>登录：{formatDateTime(user.lastLoginAt)}</div>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {user.partnerId ? '已配对' : '未配对'}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex justify-end gap-2">
-                                {user.disabledAt ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => openAction(user, 'enable')}
-                                    disabled={Boolean(user.deletedAt)}
-                                    className="rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    解除冻结
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => openAction(user, 'disable')}
-                                    disabled={Boolean(user.deletedAt)}
-                                    className="rounded-md bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    冻结
-                                  </button>
+                          <Fragment key={user.id}>
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <div className="font-medium text-gray-900">{user.username}</div>
+                                <div className="text-sm text-gray-600">{user.email}</div>
+                                <div className="mt-1 font-mono text-xs text-gray-400">{user.id}</div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}>
+                                  {status.label}
+                                </span>
+                                {user.disabledReason && (
+                                  <div className="mt-1 max-w-[220px] truncate text-xs text-gray-500" title={user.disabledReason}>
+                                    {user.disabledReason}
+                                  </div>
                                 )}
-                                <button
-                                  type="button"
-                                  onClick={() => openAction(user, 'forceDelete')}
-                                  disabled={Boolean(user.deletedAt)}
-                                  className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                  强制注销
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                {user.isAdmin ? '管理员' : '普通用户'}
+                              </td>
+                              <td className="px-4 py-3 text-xs text-gray-600">
+                                <div>创建：{formatDateTime(user.createdAt)}</div>
+                                <div>登录：{formatDateTime(user.lastLoginAt)}</div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                {user.partnerId ? (
+                                  <div className="flex flex-col items-start gap-2">
+                                    <span>已配对</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePartner(user)}
+                                      disabled={partnerLookup?.loading}
+                                      className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {partnerLookup?.loading
+                                        ? '查询中...'
+                                        : partnerLookup?.expanded
+                                          ? '收起伴侣信息'
+                                          : '查看伴侣信息'}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  '未配对'
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex justify-end gap-2">
+                                  {user.disabledAt ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => openAction(user, 'enable')}
+                                      disabled={Boolean(user.deletedAt)}
+                                      className="rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      解除冻结
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => openAction(user, 'disable')}
+                                      disabled={Boolean(user.deletedAt)}
+                                      className="rounded-md bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      冻结
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => openAction(user, 'forceDelete')}
+                                    disabled={Boolean(user.deletedAt)}
+                                    className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    强制注销
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {partnerLookup?.expanded && (
+                              <tr className="bg-blue-50/40">
+                                <td colSpan={6} className="px-4 py-4">
+                                  {partnerLookup.loading ? (
+                                    <div className="text-sm text-blue-700">正在查询伴侣信息...</div>
+                                  ) : partnerLookup.error ? (
+                                    <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                      {partnerLookup.error}
+                                    </div>
+                                  ) : partnerLookup.partner ? (
+                                    <div className="grid gap-3 rounded-md border border-blue-100 bg-white p-4 text-sm sm:grid-cols-4">
+                                      <div>
+                                        <div className="text-xs text-gray-500">用户名</div>
+                                        <div className="mt-1 font-medium text-gray-900">{partnerLookup.partner.username}</div>
+                                      </div>
+                                      <div>
+                                        <div className="text-xs text-gray-500">邮箱</div>
+                                        <div className="mt-1 text-gray-700">{partnerLookup.partner.email}</div>
+                                      </div>
+                                      <div>
+                                        <div className="text-xs text-gray-500">状态</div>
+                                        <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getUserStatus(partnerLookup.partner).className}`}>
+                                          {getUserStatus(partnerLookup.partner).label}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <div className="text-xs text-gray-500">登录</div>
+                                        <div className="mt-1 text-gray-700">{formatDateTime(partnerLookup.partner.lastLoginAt)}</div>
+                                      </div>
+                                      <div className="sm:col-span-4">
+                                        <div className="text-xs text-gray-500">User ID</div>
+                                        <div className="mt-1 font-mono text-xs text-gray-500">{partnerLookup.partner.id}</div>
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
                         );
                       })}
                     </tbody>
