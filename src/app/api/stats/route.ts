@@ -79,20 +79,6 @@ export async function GET(request: NextRequest) {
     // 解析日期范围
     const { start, end } = parseDateRange(startDate, endDate);
     
-    // 获取总 PV
-    const totalViewsResult = await prisma.event.aggregate({
-      _count: {
-        id: true
-      },
-      where: {
-        projectId,
-        createdAt: {
-          gte: start,
-          lte: end
-        }
-      }
-    });
-    
     // 获取 UV 原始事件，后续按 canonical user key 去重：
     // 登录后优先使用真实 usOnlyUserId，未登录 fallback 到 monitor_user_id。
     const uniqueVisitorEvents = await prisma.event.findMany({
@@ -118,97 +104,6 @@ export async function GET(request: NextRequest) {
       const canonicalUserId = getCanonicalUserId(event);
       if (canonicalUserId) uniqueVisitorIds.add(canonicalUserId);
     });
-    
-    // 按城市/地区分组统计（用于饼图）- 使用 groupBy 直接按 city, region, country 分组
-    const viewsByRegionResult = await prisma.event.groupBy({
-      by: ['city', 'region', 'country'],
-      _count: {
-        id: true
-      },
-      where: {
-        projectId,
-        createdAt: {
-          gte: start,
-          lte: end
-        }
-      },
-      orderBy: {
-        _count: {
-          id: 'desc'
-        }
-      },
-      take: 10 // 限制前 10 个地区
-    });
-    
-    // 按国家分组统计（保留原有逻辑用于其他展示）
-    const viewsByCountryResult = await prisma.event.groupBy({
-      by: ['country'],
-      _count: {
-        id: true
-      },
-      where: {
-        projectId,
-        createdAt: {
-          gte: start,
-          lte: end
-        }
-      },
-      orderBy: {
-        _count: {
-          id: 'desc'
-        }
-      },
-      take: 20 // 限制前 20 个国家
-    });
-    
-    // 按日期分组统计 PV（最近 30 天，使用北京时间）
-    const viewsByDayResult = await prisma.event.groupBy({
-      by: ['createdAt'],
-      _count: {
-        id: true
-      },
-      where: {
-        projectId,
-        createdAt: {
-          gte: start,
-          lte: end
-        }
-      },
-      orderBy: {
-        createdAt: 'asc'
-      }
-    });
-    
-    // 按日期分组 PV（使用北京时间转换）
-    const viewsByDayMap = new Map<string, number>();
-    viewsByDayResult.forEach((item: { createdAt: Date; _count: { id: number } }) => {
-      const beijingDate = formatAsBeijingDate(item.createdAt);
-      viewsByDayMap.set(beijingDate, (viewsByDayMap.get(beijingDate) || 0) + item._count.id);
-    });
-    
-    const viewsByDay = Array.from(viewsByDayMap.entries()).map(([date, count]) => ({
-      date,
-      count
-    }));
-    
-    // 计算当天 PV（使用北京时间）
-    const today = formatAsBeijingDate(new Date());
-    const todayPV = viewsByDay.find(item => item.date === today)?.count || 0;
-    
-    // 处理地区数据（用于饼图）- 优先使用城市，其次使用地区，最后使用国家
-    const viewsByRegion = viewsByRegionResult
-      .map((item: { city: string | null; region: string | null; country: string | null; _count: { id: number } }) => {
-        let regionName = item.city || item.region || item.country || 'Unknown';
-        // 移除省份后缀（如"上海市"->"上海"），避免重复
-        if (regionName && regionName.endsWith('市') && regionName.length > 2) {
-          regionName = regionName.slice(0, -1);
-        }
-        return {
-          name: regionName,
-          count: item._count.id
-        };
-      })
-      .filter(item => item.name !== 'Unknown'); // 过滤掉 Unknown 地区
     
     // 按地区分组，每个地区存储独立的 canonical user key 集合
     const regionUserMap = new Map<string, Set<string>>();
@@ -324,13 +219,7 @@ export async function GET(request: NextRequest) {
     
     // 构建响应数据
     const stats: StatsResponse = {
-      totalViews: totalViewsResult._count.id,
       uniqueVisitors: uniqueVisitorIds.size,
-      viewsByCountry: viewsByCountryResult.map((item: { country: string | null; _count: { id: number } }) => ({
-        country: item.country || 'Unknown',
-        count: item._count.id
-      })),
-      viewsByDay,
       uniqueVisitorsByDay,
       dailyActiveUsers,
       topPages: topPagesResult.map((item: { pageUrl: string | null; _count: { id: number } }) => ({
@@ -338,8 +227,6 @@ export async function GET(request: NextRequest) {
         count: item._count.id
       })),
       ipResolveStats,
-      todayPV,
-      viewsByRegion,
       activeUsersByRegion
     };
     

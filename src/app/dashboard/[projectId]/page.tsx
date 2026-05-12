@@ -729,7 +729,7 @@ export default function DashboardPage() {
             {stats && (
               <>
                 {/* 统计卡片 */}
-                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:mb-8 xl:grid-cols-4">
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:mb-8 xl:grid-cols-3">
                   {/* 注册用户数（外部 API） */}
                   <div className="rounded-lg bg-white p-5 shadow-md sm:p-6">
                     <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
@@ -749,14 +749,6 @@ export default function DashboardPage() {
                         )}
                       </div>
                     )}
-                  </div>
-
-                  {/* 当日 PV */}
-                  <div className="rounded-lg bg-white p-5 shadow-md sm:p-6">
-                    <h3 className="text-sm font-medium text-gray-500">Page Views</h3>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {stats.todayPV ?? '-'}
-                    </p>
                   </div>
 
                   {/* 每日访问用户数（UV） - 可点击 */}
@@ -790,40 +782,6 @@ export default function DashboardPage() {
 
                 {/* 图表 - 每日访问用户数和每日登录用户数 */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
-                  {/* 每日访问用户数（PV）柱状图 */}
-                  <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
-                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Page Views ({getCurrentMonthStr()})</h3>
-                    {stats.viewsByDay && stats.viewsByDay.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={fillMissingDates(
-                          filterCurrentMonth(stats.viewsByDay),
-                          startDate,
-                          endDate
-                        )}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="date" 
-                            tickFormatter={formatShortDate}
-                            ticks={getXAxisTicks(fillMissingDates(
-                              filterCurrentMonth(stats.viewsByDay),
-                              startDate,
-                              endDate
-                            ))}
-                            interval="preserveStartEnd"
-                          />
-                          <YAxis allowDecimals={false} />
-                          <Tooltip content={(props) => <CustomTooltip {...props} color="#3B82F6" />} />
-                          <Legend />
-                          <Bar dataKey="count" fill="#3B82F6" name="Page Views" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
-                        No data available for this period
-                      </div>
-                    )}
-                  </div>
-
                   {/* 每日独立访客数（UV）柱状图 - 可点击 */}
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
                     <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Unique Visitors ({getCurrentMonthStr()})</h3>

@@ -71,10 +71,7 @@ export interface RegionData {
 
 // 统计响应数据
 export interface StatsResponse {
-  totalViews: number;
   uniqueVisitors: number;
-  viewsByCountry: Array<{ country: string | null; count: number }>;
-  viewsByDay: Array<{ date: string; count: number }>; // 每日 PV
   uniqueVisitorsByDay: Array<{ date: string; count: number }>; // 每日 UV
   dailyActiveUsers?: DailyActiveUser[]; // 每日登录用户数（30 天）- 从 Event 表统计
   topPages: Array<{ page: string; count: number }>;
@@ -85,10 +82,6 @@ export interface StatsResponse {
     failedCount: number;
     rateLimitedRatio: number; // 被限流比例
   };
-  // 当天 PV
-  todayPV?: number;
-  // 按地区分组数据（用于饼图，前 10 个地区）- 所有事件
-  viewsByRegion?: RegionData[];
   // 按地区分组数据（用于饼图，前 10 个地区）- 仅已登录用户事件
   activeUsersByRegion?: RegionData[];
   // 外部用户统计（可选）
