@@ -11,6 +11,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Project-ID',
 };
 
+function getMetadataString(metadata: unknown, key: string): string | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function getCanonicalUserId(event: { userId: string | null; metadata?: unknown }): string | null {
+  const usOnlyUserId = getMetadataString(event.metadata, 'usOnlyUserId');
+  if (usOnlyUserId) return `user_${usOnlyUserId}`;
+  return event.userId || null;
+}
+
 // 处理 OPTIONS 预检请求
 export async function OPTIONS(request: NextRequest) {
   return new Response(null, {
@@ -81,8 +93,9 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // 获取 UV（按 userId 去重）
-    const uniqueVisitorsResult = await prisma.event.findMany({
+    // 获取 UV 原始事件，后续按 canonical user key 去重：
+    // 登录后优先使用真实 usOnlyUserId，未登录 fallback 到 monitor_user_id。
+    const uniqueVisitorEvents = await prisma.event.findMany({
       where: {
         projectId,
         createdAt: {
@@ -92,9 +105,18 @@ export async function GET(request: NextRequest) {
         userId: { not: null }
       },
       select: {
-        userId: true
-      },
-      distinct: ['userId']
+        userId: true,
+        metadata: true,
+        createdAt: true,
+        city: true,
+        region: true,
+        country: true
+      }
+    });
+    const uniqueVisitorIds = new Set<string>();
+    uniqueVisitorEvents.forEach((event) => {
+      const canonicalUserId = getCanonicalUserId(event);
+      if (canonicalUserId) uniqueVisitorIds.add(canonicalUserId);
     });
     
     // 按城市/地区分组统计（用于饼图）- 使用 groupBy 直接按 city, region, country 分组
@@ -188,28 +210,12 @@ export async function GET(request: NextRequest) {
       })
       .filter(item => item.name !== 'Unknown'); // 过滤掉 Unknown 地区
     
-    // 按城市/地区分组统计已登录用户（UV）- 按 userId 去重后统计独立用户数
-    // 先获取所有有 userId 的事件记录
-    const eventsWithUserIdForRegion = await prisma.event.findMany({
-      where: {
-        projectId,
-        createdAt: {
-          gte: start,
-          lte: end
-        },
-        userId: { not: null }
-      },
-      select: {
-        userId: true,
-        city: true,
-        region: true,
-        country: true
-      }
-    });
-    
-    // 按地区分组，每个地区存储独立的 userId 集合
+    // 按地区分组，每个地区存储独立的 canonical user key 集合
     const regionUserMap = new Map<string, Set<string>>();
-    eventsWithUserIdForRegion.forEach((event) => {
+    uniqueVisitorEvents.forEach((event) => {
+      const canonicalUserId = getCanonicalUserId(event);
+      if (!canonicalUserId) return;
+
       let regionName = event.city || event.region || event.country || 'Unknown';
       // 移除省份后缀（如"上海市"->"上海"），避免重复
       if (regionName && regionName.endsWith('市') && regionName.length > 2) {
@@ -220,7 +226,7 @@ export async function GET(request: NextRequest) {
       if (!regionUserMap.has(regionName)) {
         regionUserMap.set(regionName, new Set());
       }
-      regionUserMap.get(regionName)!.add(event.userId!);
+      regionUserMap.get(regionName)!.add(canonicalUserId);
     });
     
     // 转换为数组并排序，取前 10 个地区
@@ -232,31 +238,17 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
     
-    // 按日期分组统计 UV（最近 30 天，使用北京时间）
-    // 获取所有有 userId 的事件记录
-    const eventsWithUserId = await prisma.event.findMany({
-      where: {
-        projectId,
-        createdAt: {
-          gte: start,
-          lte: end
-        },
-        userId: { not: null }
-      },
-      select: {
-        userId: true,
-        createdAt: true
-      }
-    });
-    
-    // 按北京时间日期分组，统计每天的独立访客数（去重 userId）
+    // 按北京时间日期分组，统计每天的独立访客数（去重 canonical user key）
     const uniqueVisitorsByDayMap = new Map<string, Set<string>>();
-    eventsWithUserId.forEach((event) => {
+    uniqueVisitorEvents.forEach((event) => {
+      const canonicalUserId = getCanonicalUserId(event);
+      if (!canonicalUserId) return;
+
       const beijingDate = formatAsBeijingDate(event.createdAt);
       if (!uniqueVisitorsByDayMap.has(beijingDate)) {
         uniqueVisitorsByDayMap.set(beijingDate, new Set());
       }
-      uniqueVisitorsByDayMap.get(beijingDate)!.add(event.userId!);
+      uniqueVisitorsByDayMap.get(beijingDate)!.add(canonicalUserId);
     });
     
     const uniqueVisitorsByDay = Array.from(uniqueVisitorsByDayMap.entries()).map(([date, userIdSet]) => ({
@@ -333,7 +325,7 @@ export async function GET(request: NextRequest) {
     // 构建响应数据
     const stats: StatsResponse = {
       totalViews: totalViewsResult._count.id,
-      uniqueVisitors: uniqueVisitorsResult.length,
+      uniqueVisitors: uniqueVisitorIds.size,
       viewsByCountry: viewsByCountryResult.map((item: { country: string | null; _count: { id: number } }) => ({
         country: item.country || 'Unknown',
         count: item._count.id

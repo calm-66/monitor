@@ -32,6 +32,7 @@
   let eventQueue = [];
   let flushTimer = null;
   let isFlushing = false;
+  let authenticatedUserId = null;
 
   /**
    * 初始化监控
@@ -86,9 +87,10 @@
       userAgent: navigator.userAgent,
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
-      userId: getOrCreateUserId(),
+      userId: getCurrentUserId(metadata),
       // 使用浏览器当地时间（ISO 格式，包含时区信息）
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      metadata: metadata
     };
 
     queueEvent(payload);
@@ -98,6 +100,8 @@
    * 追踪自定义事件
    */
   function trackEvent(eventName, eventData) {
+    var metadata = eventData || {};
+
     const payload = {
       eventType: 'custom',
       eventName: eventName,
@@ -105,10 +109,10 @@
       userAgent: navigator.userAgent,
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
-      userId: getOrCreateUserId(),
+      userId: getCurrentUserId(metadata),
       // 使用浏览器当地时间（ISO 格式，包含时区信息）
       createdAt: new Date().toISOString(),
-      metadata: eventData || {}
+      metadata: metadata
     };
 
     queueEvent(payload);
@@ -235,6 +239,61 @@
     }
   }
 
+  function normalizeAuthenticatedUserId(usOnlyUserId) {
+    if (!usOnlyUserId) return null;
+    var normalized = String(usOnlyUserId).trim();
+    if (!normalized) return null;
+    return normalized.indexOf('user_') === 0 ? normalized : 'user_' + normalized;
+  }
+
+  function getStorage() {
+    try {
+      return window.localStorage;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function identify(usOnlyUserId) {
+    var normalized = normalizeAuthenticatedUserId(usOnlyUserId);
+    if (!normalized) return;
+
+    authenticatedUserId = normalized;
+
+    var storage = getStorage();
+    if (storage) {
+      storage.setItem('monitor_authenticated_user_id', normalized);
+    }
+  }
+
+  function clearUser() {
+    authenticatedUserId = null;
+
+    var storage = getStorage();
+    if (storage) {
+      storage.removeItem('monitor_authenticated_user_id');
+    }
+  }
+
+  function getAuthenticatedUserId() {
+    if (authenticatedUserId) return authenticatedUserId;
+
+    var storage = getStorage();
+    if (!storage) return null;
+
+    var storedUserId = storage.getItem('monitor_authenticated_user_id');
+    authenticatedUserId = normalizeAuthenticatedUserId(storedUserId);
+    return authenticatedUserId;
+  }
+
+  function getCurrentUserId(metadata) {
+    if (metadata && metadata.usOnlyUserId) {
+      identify(metadata.usOnlyUserId);
+    }
+
+    return getAuthenticatedUserId() || getOrCreateUserId();
+  }
+
   /**
    * 手动刷新
    */
@@ -262,6 +321,8 @@
     trackPageview: trackPageview,
     trackEvent: trackEvent,
     trackClick: trackClick,
+    identify: identify,
+    clearUser: clearUser,
     flush: flush,
     destroy: destroy
   };
