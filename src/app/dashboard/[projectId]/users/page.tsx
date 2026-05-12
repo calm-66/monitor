@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import UserUsageLookup from './UserUsageLookup';
 
 type UsOnlyUser = {
   id: string;
@@ -222,6 +223,8 @@ export default function UsOnlyUsersPage() {
           </div>
           <p className="mt-2 text-xs text-gray-400">建议使用完整 User ID 操作，避免用户名重复或误选。</p>
         </section>
+
+        <UserUsageLookup projectId={projectId} />
 
         {error && (
           <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
