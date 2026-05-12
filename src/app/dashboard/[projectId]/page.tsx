@@ -731,6 +731,12 @@ export default function DashboardPage() {
                     </span>
                   )}
                 </a>
+                <a
+                  href={`/dashboard/${projectId}/users`}
+                  className="flex items-center justify-center rounded-md bg-gray-900 px-3 py-2 text-sm text-white hover:bg-black focus:outline-none focus:ring-2 focus:ring-gray-600 sm:px-4"
+                >
+                  Users
+                </a>
                 <button
                   onClick={handleRefresh}
                   disabled={loading}
