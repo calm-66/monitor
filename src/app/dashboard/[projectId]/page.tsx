@@ -316,6 +316,7 @@ export default function DashboardPage() {
   const [apiKey, setApiKey] = useState('');
   const [projectInfo, setProjectInfo] = useState<Project | null>(null);
   const [feedbackCount, setFeedbackCount] = useState(0);
+  const [todayActiveUsersCount, setTodayActiveUsersCount] = useState<number | null>(null);
 
   // 日期范围
   const [startDate, setStartDate] = useState(() => {
@@ -453,6 +454,31 @@ export default function DashboardPage() {
     }
   }, [projectId, apiKey]);
 
+  const loadTodayActiveUsersCount = useCallback(async () => {
+    if (!apiKey) return;
+
+    try {
+      const today = getTodayStr();
+      const response = await fetch(
+        `/api/stats/user-details?projectId=${projectId}&startDate=${startDate}&endDate=${endDate}&type=active&date=${today}`,
+        {
+          headers: {
+            'X-API-Key': apiKey,
+          },
+        }
+      );
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.success) {
+        setTodayActiveUsersCount(data.data.total ?? data.data.users?.length ?? 0);
+      }
+    } catch (err) {
+      console.error('Failed to load today active users count:', err);
+    }
+  }, [projectId, startDate, endDate, apiKey]);
+
   // 加载用户详细信息
   const loadUserDetails = useCallback(async (type: 'uv' | 'active', date?: string, region?: string) => {
     setUserDetailsLoading(true);
@@ -583,8 +609,9 @@ export default function DashboardPage() {
     if (apiKey) {
       loadStats();
       loadFeedbackCount();
+      loadTodayActiveUsersCount();
     }
-  }, [apiKey, loadStats, loadFeedbackCount]);
+  }, [apiKey, loadStats, loadFeedbackCount, loadTodayActiveUsersCount]);
 
   // 加载外部用户统计（初始加载 + 每 5 分钟自动刷新）
   useEffect(() => {
@@ -619,6 +646,7 @@ export default function DashboardPage() {
     setLoading(true);
     setError('');
     loadFeedbackCount();
+    loadTodayActiveUsersCount();
     
     try {
       // 同时加载统计数据和外部用户统计
@@ -791,15 +819,7 @@ export default function DashboardPage() {
                   >
                     <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {(() => {
-                        const dailyActiveUsers = stats.dailyActiveUsers;
-                        if (!dailyActiveUsers || dailyActiveUsers.length === 0) return '0';
-                        
-                        // 查找当天的数据
-                        const todayStr = getTodayStr();
-                        const todayData = dailyActiveUsers.find(item => item.date === todayStr);
-                        return todayData?.count ?? 0;
-                      })()}
+                      {todayActiveUsersCount ?? '-'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">Click for details</p>
                   </div>
