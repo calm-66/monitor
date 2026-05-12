@@ -227,7 +227,11 @@ export default function UsOnlyUsersPage() {
           {hasSearchedUsers && (
             <div className="mt-5 border-t border-gray-200 pt-4">
               <h3 className="mb-4 text-base font-semibold text-gray-800">搜索结果</h3>
-              {searchError ? (
+              {loading ? (
+                <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                  搜索中...
+                </div>
+              ) : searchError ? (
                 <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {searchError}
                 </div>
