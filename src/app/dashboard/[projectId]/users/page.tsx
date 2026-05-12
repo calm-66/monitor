@@ -63,7 +63,9 @@ export default function UsOnlyUsersPage() {
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState<UsOnlyUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasSearchedUsers, setHasSearchedUsers] = useState(false);
   const [error, setError] = useState('');
+  const [searchError, setSearchError] = useState('');
   const [message, setMessage] = useState('');
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [reason, setReason] = useState('');
@@ -82,13 +84,15 @@ export default function UsOnlyUsersPage() {
     const trimmed = query.trim();
     if (!trimmed) {
       setUsers([]);
-      setError('');
+      setSearchError('');
+      setHasSearchedUsers(false);
       return;
     }
 
     setLoading(true);
-    setError('');
+    setSearchError('');
     setMessage('');
+    setHasSearchedUsers(true);
 
     try {
       const res = await fetch(`/api/usonly-admin/users?q=${encodeURIComponent(trimmed)}`, {
@@ -103,12 +107,9 @@ export default function UsOnlyUsersPage() {
       }
 
       setUsers(data.users || []);
-      if (!data.users?.length) {
-        setMessage('没有找到匹配用户');
-      }
     } catch (err: any) {
       setUsers([]);
-      setError(err.message || '搜索失败');
+      setSearchError(err.message || '搜索失败');
     } finally {
       setLoading(false);
     }
@@ -191,7 +192,6 @@ export default function UsOnlyUsersPage() {
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">UsOnly 用户管理</h1>
-            <p className="mt-1 text-sm text-gray-500">搜索用户并执行冻结、解除冻结或强制注销</p>
           </div>
           <a
             href={`/dashboard/${projectId}`}
@@ -202,6 +202,7 @@ export default function UsOnlyUsersPage() {
         </div>
 
         <section className="mb-6 rounded-lg bg-white p-5 shadow-md">
+          <h2 className="mb-4 text-lg font-semibold text-gray-800">User Management</h2>
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               value={query}
@@ -222,6 +223,102 @@ export default function UsOnlyUsersPage() {
             </button>
           </div>
           <p className="mt-2 text-xs text-gray-400">建议使用完整 User ID 操作，避免用户名重复或误选。</p>
+
+          {hasSearchedUsers && (
+            <div className="mt-5 border-t border-gray-200 pt-4">
+              <h3 className="mb-4 text-base font-semibold text-gray-800">搜索结果</h3>
+              {searchError ? (
+                <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {searchError}
+                </div>
+              ) : users.length === 0 ? (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  没有找到匹配用户
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="min-w-[980px] w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">用户</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">状态</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">角色</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">创建/登录</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">配对</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {users.map((user) => {
+                        const status = getUserStatus(user);
+
+                        return (
+                          <tr key={user.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-gray-900">{user.username}</div>
+                              <div className="text-sm text-gray-600">{user.email}</div>
+                              <div className="mt-1 font-mono text-xs text-gray-400">{user.id}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}>
+                                {status.label}
+                              </span>
+                              {user.disabledReason && (
+                                <div className="mt-1 max-w-[220px] truncate text-xs text-gray-500" title={user.disabledReason}>
+                                  {user.disabledReason}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {user.isAdmin ? '管理员' : '普通用户'}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-600">
+                              <div>创建：{formatDateTime(user.createdAt)}</div>
+                              <div>登录：{formatDateTime(user.lastLoginAt)}</div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {user.partnerId ? '已配对' : '未配对'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex justify-end gap-2">
+                                {user.disabledAt ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openAction(user, 'enable')}
+                                    disabled={Boolean(user.deletedAt)}
+                                    className="rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    解除冻结
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => openAction(user, 'disable')}
+                                    disabled={Boolean(user.deletedAt)}
+                                    className="rounded-md bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    冻结
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => openAction(user, 'forceDelete')}
+                                  disabled={Boolean(user.deletedAt)}
+                                  className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  强制注销
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         <UserUsageLookup projectId={projectId} />
@@ -237,98 +334,6 @@ export default function UsOnlyUsersPage() {
           </div>
         )}
 
-        <section className="overflow-hidden rounded-lg bg-white shadow-md">
-          <div className="border-b border-gray-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-gray-800">搜索结果</h2>
-          </div>
-
-          {users.length === 0 ? (
-            <div className="px-5 py-12 text-center text-sm text-gray-400">
-              输入关键词后搜索用户
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-[980px] w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">用户</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">状态</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">角色</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">创建/登录</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">配对</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {users.map((user) => {
-                    const status = getUserStatus(user);
-
-                    return (
-                      <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-gray-900">{user.username}</div>
-                          <div className="text-sm text-gray-600">{user.email}</div>
-                          <div className="mt-1 font-mono text-xs text-gray-400">{user.id}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}>
-                            {status.label}
-                          </span>
-                          {user.disabledReason && (
-                            <div className="mt-1 max-w-[220px] truncate text-xs text-gray-500" title={user.disabledReason}>
-                              {user.disabledReason}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {user.isAdmin ? '管理员' : '普通用户'}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-600">
-                          <div>创建：{formatDateTime(user.createdAt)}</div>
-                          <div>登录：{formatDateTime(user.lastLoginAt)}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {user.partnerId ? '已配对' : '未配对'}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            {user.disabledAt ? (
-                              <button
-                                type="button"
-                                onClick={() => openAction(user, 'enable')}
-                                disabled={Boolean(user.deletedAt)}
-                                className="rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                解除冻结
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => openAction(user, 'disable')}
-                                disabled={Boolean(user.deletedAt)}
-                                className="rounded-md bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                冻结
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => openAction(user, 'forceDelete')}
-                              disabled={Boolean(user.deletedAt)}
-                              className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              强制注销
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
       </div>
 
       {pendingAction && (
