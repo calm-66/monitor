@@ -218,7 +218,7 @@ export default function UserUsageLookup({ projectId }: UserUsageLookupProps) {
         <div>
           <h2 className="text-lg font-semibold text-gray-800">User Usage Lookup</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Search by UsOnly user ID, user_ ID, or Monitor visitor ID within the selected date range.
+            Search by UsOnly user ID, username, user_ ID, or Monitor visitor ID within the selected date range.
           </p>
         </div>
 
@@ -242,7 +242,7 @@ export default function UserUsageLookup({ projectId }: UserUsageLookupProps) {
             />
           </label>
           <label className="min-w-0">
-            <span className="mb-1 block text-xs font-medium text-gray-500">User ID</span>
+            <span className="mb-1 block text-xs font-medium text-gray-500">User ID or Username</span>
             <input
               type="text"
               value={usageUserId}
@@ -253,7 +253,7 @@ export default function UserUsageLookup({ projectId }: UserUsageLookupProps) {
                   searchUserUsage();
                 }
               }}
-              placeholder="Enter user ID"
+              placeholder="Enter user ID or username"
               className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm text-gray-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500"
             />
           </label>
@@ -411,7 +411,6 @@ export default function UserUsageLookup({ projectId }: UserUsageLookupProps) {
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Created</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Title</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Images</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Location</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Archived</th>
@@ -422,7 +421,6 @@ export default function UserUsageLookup({ projectId }: UserUsageLookupProps) {
                       <tr key={post.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 font-mono text-xs text-gray-900">{post.createdAt}</td>
                         <td className="px-4 py-3 font-mono text-xs text-gray-900">{post.date}</td>
-                        <td className="max-w-[180px] truncate px-4 py-3 text-sm text-gray-900">{post.title || '-'}</td>
                         <td className="px-4 py-3 text-sm tabular-nums text-gray-900">{post.imageCount}</td>
                         <td className="max-w-[160px] truncate px-4 py-3 text-sm text-gray-900">{post.location || '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{post.archivedAt ? 'Yes' : 'No'}</td>

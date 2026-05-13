@@ -207,6 +207,7 @@ export async function GET(request: NextRequest) {
         { userId: { in: userIdCandidates } },
         { metadata: { path: ['usOnlyUserId'], equals: withoutAccountPrefix } },
         { metadata: { path: ['monitorUserId'], equals: trimmed } },
+        { metadata: { path: ['username'], equals: trimmed } },
       ]
     };
 
@@ -280,22 +281,24 @@ export async function GET(request: NextRequest) {
 
     const lastSeenAt = events[0]?.createdAt || null;
     const firstSeenAt = events.length > 0 ? events[events.length - 1].createdAt : null;
-    const resolvedUsOnlyUserId = usOnlyUserId || (trimmed.startsWith('user_') ? withoutAccountPrefix : null);
+    const resolvedUsOnlyUserId = usOnlyUserId || (trimmed.startsWith('user_') ? withoutAccountPrefix : trimmed);
     const contentStatsResult = resolvedUsOnlyUserId
       ? await fetchUsOnlyContentStats(project.domain, apiKey, resolvedUsOnlyUserId)
       : {
           contentStats: null,
           contentStatsError: 'No UsOnly user ID was found for this query',
         };
+    const resolvedContentUserId = contentStatsResult.contentStats?.user?.id || resolvedUsOnlyUserId;
+    const resolvedUsername = username || contentStatsResult.contentStats?.user?.username || null;
 
     return NextResponse.json({
       success: true,
       data: {
         inputUserId: trimmed,
         matchedUserIds: Array.from(matchedUserIds),
-        usOnlyUserId: resolvedUsOnlyUserId,
+        usOnlyUserId: resolvedContentUserId,
         monitorUserId,
-        username,
+        username: resolvedUsername,
         totalEvents,
         totalPageViews,
         totalLogins,

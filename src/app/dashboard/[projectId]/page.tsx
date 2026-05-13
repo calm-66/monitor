@@ -1176,7 +1176,6 @@ export default function DashboardPage() {
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Published At</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Images</th>
                         </tr>
@@ -1186,7 +1185,6 @@ export default function DashboardPage() {
                           <tr key={post.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 text-sm font-medium text-gray-900">{post.username}</td>
                             <td className="px-4 py-3 text-xs font-mono text-gray-900">{formatDateTime(post.createdAt)}</td>
-                            <td className="max-w-[180px] truncate px-4 py-3 text-sm text-gray-900">{post.title || '-'}</td>
                             <td className="max-w-[180px] truncate px-4 py-3 text-sm text-gray-900">
                               {post.location || (post.latitude != null && post.longitude != null ? `${post.latitude}, ${post.longitude}` : '-')}
                             </td>

@@ -204,7 +204,6 @@ export interface UsOnlyContentStats {
   lastPostAt: string | null;
   recentPosts: Array<{
     id: string;
-    title: string | null;
     date: string;
     imageCount: number;
     location: string | null;
@@ -263,7 +262,6 @@ export interface RegisteredUsersResponse {
 
 export interface PostDetail {
   id: string;
-  title: string | null;
   date: string;
   username: string;
   userId: string;
