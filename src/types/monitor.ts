@@ -21,6 +21,7 @@ export interface ExternalUserStats {
     totalPosts?: number;
     totalComments?: number;
     totalImages?: number;
+    dailyPosts?: DailyActiveUser[];
   };
 }
 
@@ -107,6 +108,7 @@ export interface StatsResponse {
     totalPosts?: number;
     totalComments?: number;
     totalImages?: number;
+    dailyPosts?: DailyActiveUser[];
     todayPostingUsers?: number;
     todayPosts?: number;
     todayComments?: number;
@@ -255,6 +257,29 @@ export interface RegisteredUsersResponse {
   data: {
     date: string;
     users: RegisteredUserDetail[];
+    total: number;
+  };
+}
+
+export interface PostDetail {
+  id: string;
+  title: string | null;
+  date: string;
+  username: string;
+  userId: string;
+  createdAt: string;
+  location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  imageCount: number;
+  archivedAt: string | null;
+}
+
+export interface PostsResponse {
+  success: boolean;
+  data: {
+    date: string;
+    posts: PostDetail[];
     total: number;
   };
 }

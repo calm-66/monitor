@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { StatsResponse, IpLimitStats, Project, UserDetail, DistributionData, RegisteredUserDetail } from '@/types/monitor';
+import { StatsResponse, IpLimitStats, Project, UserDetail, DistributionData, RegisteredUserDetail, PostDetail } from '@/types/monitor';
 import {
   LineChart,
   Line,
@@ -299,34 +299,6 @@ function RegionPieLegend({
   );
 }
 
-type OperationMetric = {
-  label: string;
-  value: number | string;
-  note?: string;
-  tone: 'blue' | 'green' | 'amber' | 'purple' | 'rose' | 'cyan';
-};
-
-const OPERATION_TONES: Record<OperationMetric['tone'], string> = {
-  blue: 'border-blue-100 bg-blue-50 text-blue-700',
-  green: 'border-green-100 bg-green-50 text-green-700',
-  amber: 'border-amber-100 bg-amber-50 text-amber-700',
-  purple: 'border-purple-100 bg-purple-50 text-purple-700',
-  rose: 'border-rose-100 bg-rose-50 text-rose-700',
-  cyan: 'border-cyan-100 bg-cyan-50 text-cyan-700',
-};
-
-function OperationMetricCard({ label, value, note, tone }: OperationMetric) {
-  return (
-    <div className="min-w-0 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <div className={`mb-3 inline-flex rounded-md border px-2 py-1 text-xs font-medium ${OPERATION_TONES[tone]}`}>
-        {label}
-      </div>
-      <p className="break-words text-2xl font-bold tabular-nums text-gray-900">{value}</p>
-      {note && <p className="mt-1 text-xs text-gray-500">{note}</p>}
-    </div>
-  );
-}
-
 /**
  * 根据项目 domain 构建 UsOnly stats API URL
  * 处理用户可能输入的 https://、http://、/ 等前缀
@@ -372,11 +344,12 @@ export default function DashboardPage() {
   const [endDate, setEndDate] = useState(() => getTodayStr());
 
   // 用户详细信息面板状态
-  const [selectedCard, setSelectedCard] = useState<'registered' | 'uv' | 'active' | null>(null);
+  const [selectedCard, setSelectedCard] = useState<'registered' | 'uv' | 'active' | 'posts' | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [registeredUserDetails, setRegisteredUserDetails] = useState<RegisteredUserDetail[]>([]);
+  const [postDetails, setPostDetails] = useState<PostDetail[]>([]);
   const [cityDistribution, setCityDistribution] = useState<DistributionData[]>([]);
   const [deviceDistribution, setDeviceDistribution] = useState<DistributionData[]>([]);
   const [pageDistribution, setPageDistribution] = useState<DistributionData[]>([]);
@@ -548,6 +521,31 @@ export default function DashboardPage() {
     }
   }, [projectId, apiKey]);
 
+  const loadPostDetails = useCallback(async (date: string) => {
+    setUserDetailsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/stats/posts?projectId=${projectId}&date=${date}`,
+        {
+          headers: {
+            'X-API-Key': apiKey,
+          },
+        }
+      );
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.success) {
+        setPostDetails(data.data.posts || []);
+      }
+    } catch (err) {
+      console.error('Failed to load post details:', err);
+    } finally {
+      setUserDetailsLoading(false);
+    }
+  }, [projectId, apiKey]);
+
   const loadUserDetails = useCallback(async (type: 'uv' | 'active', date?: string, region?: string) => {
     setUserDetailsLoading(true);
     try {
@@ -588,6 +586,7 @@ export default function DashboardPage() {
     setSelectedDate(today);
     setSelectedRegion(null);
     setRegisteredUserDetails([]);
+    setPostDetails([]);
     loadUserDetails(type, today);
   }, [loadUserDetails]);
 
@@ -600,8 +599,22 @@ export default function DashboardPage() {
     setCityDistribution([]);
     setDeviceDistribution([]);
     setPageDistribution([]);
+    setPostDetails([]);
     loadRegisteredUserDetails(today);
   }, [loadRegisteredUserDetails]);
+
+  const handlePostsCardClick = useCallback(() => {
+    const today = getTodayStr();
+    setSelectedCard('posts');
+    setSelectedDate(today);
+    setSelectedRegion(null);
+    setUserDetails([]);
+    setRegisteredUserDetails([]);
+    setCityDistribution([]);
+    setDeviceDistribution([]);
+    setPageDistribution([]);
+    loadPostDetails(today);
+  }, [loadPostDetails]);
 
   // 处理柱状图点击
   const handleRegisteredBarClick = useCallback((date: string) => {
@@ -612,14 +625,28 @@ export default function DashboardPage() {
     setCityDistribution([]);
     setDeviceDistribution([]);
     setPageDistribution([]);
+    setPostDetails([]);
     loadRegisteredUserDetails(date);
   }, [loadRegisteredUserDetails]);
+
+  const handlePostBarClick = useCallback((date: string) => {
+    setSelectedCard('posts');
+    setSelectedDate(date);
+    setSelectedRegion(null);
+    setUserDetails([]);
+    setRegisteredUserDetails([]);
+    setCityDistribution([]);
+    setDeviceDistribution([]);
+    setPageDistribution([]);
+    loadPostDetails(date);
+  }, [loadPostDetails]);
 
   const handleBarClick = useCallback((type: 'uv' | 'active', date: string) => {
     setSelectedCard(type);
     setSelectedDate(date);
     setSelectedRegion(null);
     setRegisteredUserDetails([]);
+    setPostDetails([]);
     loadUserDetails(type, date);
   }, [loadUserDetails]);
 
@@ -628,6 +655,7 @@ export default function DashboardPage() {
     setSelectedDate(null);
     setSelectedRegion(region);
     setRegisteredUserDetails([]);
+    setPostDetails([]);
     loadUserDetails('uv', undefined, region);
   }, [loadUserDetails]);
 
@@ -638,6 +666,7 @@ export default function DashboardPage() {
     setSelectedRegion(null);
     setUserDetails([]);
     setRegisteredUserDetails([]);
+    setPostDetails([]);
     setCityDistribution([]);
     setDeviceDistribution([]);
     setPageDistribution([]);
@@ -750,6 +779,14 @@ export default function DashboardPage() {
 
   // 获取面板标题
   const getPanelTitle = () => {
+    if (selectedCard === 'posts') {
+      if (!selectedDate) return 'Published Posts';
+      const today = getTodayStr();
+      return selectedDate === today
+        ? `Published Posts - Today (${selectedDate})`
+        : `Published Posts - ${selectedDate}`;
+    }
+
     if (selectedCard === 'registered') {
       if (!selectedDate) return 'Registered Users';
       const today = getTodayStr();
@@ -769,69 +806,13 @@ export default function DashboardPage() {
     return `${baseTitle} - ${selectedDate}`;
   };
 
-  const panelUserCount = selectedCard === 'registered'
+  const panelItemCount = selectedCard === 'registered'
     ? registeredUserDetails.length
-    : userDetails.length;
+    : selectedCard === 'posts'
+      ? postDetails.length
+      : userDetails.length;
   const externalUserStats = stats?.externalUserStats;
-  const todayUniqueVisitors = stats?.uniqueVisitorsByDay?.find(item => item.date === getTodayStr())?.count ?? 0;
-  const getOperationValue = (...values: Array<number | undefined | null>) => {
-    const value = values.find(item => typeof item === 'number');
-    return value ?? '-';
-  };
-  const operationMetrics: OperationMetric[] = [
-    {
-      label: 'Posting Users',
-      value: getOperationValue(
-        externalUserStats?.operationStats?.postingUsersToday,
-        externalUserStats?.postingUsersToday,
-        externalUserStats?.todayPostingUsers
-      ),
-      note: 'Today',
-      tone: 'blue',
-    },
-    {
-      label: 'Posts',
-      value: getOperationValue(
-        externalUserStats?.operationStats?.postsToday,
-        externalUserStats?.postsToday,
-        externalUserStats?.todayPosts
-      ),
-      note: 'Today',
-      tone: 'green',
-    },
-    {
-      label: 'Comments',
-      value: getOperationValue(
-        externalUserStats?.operationStats?.commentsToday,
-        externalUserStats?.commentsToday,
-        externalUserStats?.todayComments
-      ),
-      note: 'Today',
-      tone: 'amber',
-    },
-    {
-      label: 'Images',
-      value: getOperationValue(
-        externalUserStats?.operationStats?.imagesToday,
-        externalUserStats?.imagesToday,
-        externalUserStats?.todayImages
-      ),
-      note: 'Today',
-      tone: 'purple',
-    },
-    {
-      label: 'New Users',
-      value: externalUserStats?.newUsersToday ?? '-',
-      note: 'Today',
-      tone: 'rose',
-    },
-    {
-      label: 'Active Users',
-      value: todayActiveUsersCount ?? '-',
-      note: `UV ${todayUniqueVisitors}`,
-      tone: 'cyan',
-    },
-  ];
+  const todayPostsCount = externalUserStats?.postsToday ?? externalUserStats?.operationStats?.postsToday ?? '-';
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-gray-50 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
@@ -901,20 +882,53 @@ export default function DashboardPage() {
             {stats && (
               <>
                 {/* 统计卡片 */}
-                <section className="mb-6 lg:mb-8">
-                  <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900">Project Operations</h2>
-                      <p className="text-sm text-gray-500">Today ({getTodayStr()})</p>
-                    </div>
-                    {!externalUserStats && (
-                      <p className="text-xs text-gray-400">Content metrics load from the project stats API</p>
-                    )}
+                <section className="mb-6 grid grid-cols-1 gap-4 lg:mb-8 lg:grid-cols-3 lg:gap-6">
+                  <div
+                    className="cursor-pointer rounded-lg border-2 border-transparent bg-white p-5 shadow-md transition-shadow duration-200 hover:border-emerald-500 hover:shadow-lg sm:p-6"
+                    onClick={handlePostsCardClick}
+                  >
+                    <h2 className="text-sm font-medium text-gray-500">Today Published Posts</h2>
+                    <p className="mt-2 text-3xl font-bold text-gray-900">{todayPostsCount}</p>
+                    <p className="mt-1 text-xs text-gray-400">{getTodayStr()}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                    {operationMetrics.map((metric) => (
-                      <OperationMetricCard key={metric.label} {...metric} />
-                    ))}
+
+                  <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6 lg:col-span-2">
+                    <h2 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Published Posts ({getCurrentMonthStr()})</h2>
+                    {externalUserStats?.dailyPosts && externalUserStats.dailyPosts.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={260}>
+                        <BarChart data={fillMissingDates(
+                          filterCurrentMonth(externalUserStats.dailyPosts),
+                          startDate,
+                          endDate
+                        )}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickFormatter={formatShortDate}
+                            ticks={getXAxisTicks(fillMissingDates(
+                              filterCurrentMonth(externalUserStats.dailyPosts),
+                              startDate,
+                              endDate
+                            ))}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip content={(props) => <CustomTooltip {...props} color="#059669" />} />
+                          <Legend />
+                          <Bar
+                            dataKey="count"
+                            fill="#059669"
+                            name="Published Posts"
+                            onClick={(data) => handlePostBarClick(data.date)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-[260px] items-center justify-center text-sm text-gray-400">
+                        No post data available for this period
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -1131,7 +1145,7 @@ export default function DashboardPage() {
                   {getPanelTitle()}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  {panelUserCount} users found
+                  {panelItemCount} {selectedCard === 'posts' ? 'posts' : 'users'} found
                 </p>
               </div>
               <button
@@ -1150,9 +1164,38 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-center h-full">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-              ) : panelUserCount === 0 ? (
+              ) : panelItemCount === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-400">
-                  No user data available
+                  {selectedCard === 'posts' ? 'No post data available' : 'No user data available'}
+                </div>
+              ) : selectedCard === 'posts' ? (
+                <div className="p-4 sm:p-6">
+                  <div className="overflow-x-auto rounded-lg border border-gray-200">
+                    <table className="min-w-[780px] w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Published At</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Images</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {postDetails.map((post) => (
+                          <tr key={post.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{post.username}</td>
+                            <td className="px-4 py-3 text-xs font-mono text-gray-900">{formatDateTime(post.createdAt)}</td>
+                            <td className="max-w-[180px] truncate px-4 py-3 text-sm text-gray-900">{post.title || '-'}</td>
+                            <td className="max-w-[180px] truncate px-4 py-3 text-sm text-gray-900">
+                              {post.location || (post.latitude != null && post.longitude != null ? `${post.latitude}, ${post.longitude}` : '-')}
+                            </td>
+                            <td className="px-4 py-3 text-sm tabular-nums text-gray-900">{post.imageCount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : selectedCard === 'registered' ? (
                 <div className="p-4 sm:p-6">
