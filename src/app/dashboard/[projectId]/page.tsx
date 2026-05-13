@@ -813,6 +813,14 @@ export default function DashboardPage() {
       : userDetails.length;
   const externalUserStats = stats?.externalUserStats;
   const todayPostsCount = externalUserStats?.postsToday ?? externalUserStats?.operationStats?.postsToday ?? '-';
+  const todayRegisteredUsersCount = (() => {
+    if (!externalUserStats) return '-';
+    if (externalUserStats.newUsersToday !== undefined) return externalUserStats.newUsersToday;
+
+    const todayData = externalUserStats.dailyRegisteredUsers?.find(item => item.date === getTodayStr());
+    return todayData?.count ?? '-';
+  })();
+  const totalRegisteredUsersCount = externalUserStats?.totalUsers ?? '-';
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-gray-50 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
@@ -938,10 +946,11 @@ export default function DashboardPage() {
                     className="cursor-pointer rounded-lg border-2 border-transparent bg-white p-5 shadow-md transition-shadow duration-200 hover:border-blue-500 hover:shadow-lg sm:p-6"
                     onClick={handleRegisteredCardClick}
                   >
-                    <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
+                    <h3 className="text-sm font-medium text-gray-500">Today Registered Users</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {stats.externalUserStats?.totalUsers ?? '-'}
+                      {todayRegisteredUsersCount}
                     </p>
+                    <p className="mt-1 text-xs text-gray-400">{getTodayStr()}</p>
                   </div>
 
                   {/* 每日访问用户数（UV） - 可点击 */}
@@ -975,7 +984,9 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
                   {/* 每日独立访客数（UV）柱状图 - 可点击 */}
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
-                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Registered Users ({getCurrentMonthStr()})</h3>
+                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">
+                      Daily Registered Users ({getCurrentMonthStr()}, Total: {totalRegisteredUsersCount})
+                    </h3>
                     {stats.externalUserStats?.dailyRegisteredUsers && stats.externalUserStats.dailyRegisteredUsers.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={fillMissingDates(
