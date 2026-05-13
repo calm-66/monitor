@@ -14,6 +14,13 @@ export interface ExternalUserStats {
     newUsersThisMonth?: number;// 本月新增用户（可选）
     dailyRegisteredUsers?: DailyActiveUser[]; // 每日注册用户数（30 天）
     dailyActiveUsers?: DailyActiveUser[]; // 每日登录用户数（30 天）
+    postingUsersToday?: number;
+    postsToday?: number;
+    commentsToday?: number;
+    imagesToday?: number;
+    totalPosts?: number;
+    totalComments?: number;
+    totalImages?: number;
   };
 }
 
@@ -93,6 +100,26 @@ export interface StatsResponse {
     newUsersThisMonth?: number;
     dailyRegisteredUsers?: DailyActiveUser[]; // 每日注册用户数（30 天）
     dailyActiveUsers?: DailyActiveUser[]; // 每日登录用户数（30 天）
+    postingUsersToday?: number;
+    postsToday?: number;
+    commentsToday?: number;
+    imagesToday?: number;
+    totalPosts?: number;
+    totalComments?: number;
+    totalImages?: number;
+    todayPostingUsers?: number;
+    todayPosts?: number;
+    todayComments?: number;
+    todayImages?: number;
+    operationStats?: {
+      postingUsersToday?: number;
+      postsToday?: number;
+      commentsToday?: number;
+      imagesToday?: number;
+      totalPosts?: number;
+      totalComments?: number;
+      totalImages?: number;
+    };
   };
   // 环境列表（可选）
   environments?: string[];

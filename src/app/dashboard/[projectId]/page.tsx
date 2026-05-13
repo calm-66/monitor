@@ -299,6 +299,34 @@ function RegionPieLegend({
   );
 }
 
+type OperationMetric = {
+  label: string;
+  value: number | string;
+  note?: string;
+  tone: 'blue' | 'green' | 'amber' | 'purple' | 'rose' | 'cyan';
+};
+
+const OPERATION_TONES: Record<OperationMetric['tone'], string> = {
+  blue: 'border-blue-100 bg-blue-50 text-blue-700',
+  green: 'border-green-100 bg-green-50 text-green-700',
+  amber: 'border-amber-100 bg-amber-50 text-amber-700',
+  purple: 'border-purple-100 bg-purple-50 text-purple-700',
+  rose: 'border-rose-100 bg-rose-50 text-rose-700',
+  cyan: 'border-cyan-100 bg-cyan-50 text-cyan-700',
+};
+
+function OperationMetricCard({ label, value, note, tone }: OperationMetric) {
+  return (
+    <div className="min-w-0 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className={`mb-3 inline-flex rounded-md border px-2 py-1 text-xs font-medium ${OPERATION_TONES[tone]}`}>
+        {label}
+      </div>
+      <p className="break-words text-2xl font-bold tabular-nums text-gray-900">{value}</p>
+      {note && <p className="mt-1 text-xs text-gray-500">{note}</p>}
+    </div>
+  );
+}
+
 /**
  * 根据项目 domain 构建 UsOnly stats API URL
  * 处理用户可能输入的 https://、http://、/ 等前缀
@@ -744,6 +772,66 @@ export default function DashboardPage() {
   const panelUserCount = selectedCard === 'registered'
     ? registeredUserDetails.length
     : userDetails.length;
+  const externalUserStats = stats?.externalUserStats;
+  const todayUniqueVisitors = stats?.uniqueVisitorsByDay?.find(item => item.date === getTodayStr())?.count ?? 0;
+  const getOperationValue = (...values: Array<number | undefined | null>) => {
+    const value = values.find(item => typeof item === 'number');
+    return value ?? '-';
+  };
+  const operationMetrics: OperationMetric[] = [
+    {
+      label: 'Posting Users',
+      value: getOperationValue(
+        externalUserStats?.operationStats?.postingUsersToday,
+        externalUserStats?.postingUsersToday,
+        externalUserStats?.todayPostingUsers
+      ),
+      note: 'Today',
+      tone: 'blue',
+    },
+    {
+      label: 'Posts',
+      value: getOperationValue(
+        externalUserStats?.operationStats?.postsToday,
+        externalUserStats?.postsToday,
+        externalUserStats?.todayPosts
+      ),
+      note: 'Today',
+      tone: 'green',
+    },
+    {
+      label: 'Comments',
+      value: getOperationValue(
+        externalUserStats?.operationStats?.commentsToday,
+        externalUserStats?.commentsToday,
+        externalUserStats?.todayComments
+      ),
+      note: 'Today',
+      tone: 'amber',
+    },
+    {
+      label: 'Images',
+      value: getOperationValue(
+        externalUserStats?.operationStats?.imagesToday,
+        externalUserStats?.imagesToday,
+        externalUserStats?.todayImages
+      ),
+      note: 'Today',
+      tone: 'purple',
+    },
+    {
+      label: 'New Users',
+      value: externalUserStats?.newUsersToday ?? '-',
+      note: 'Today',
+      tone: 'rose',
+    },
+    {
+      label: 'Active Users',
+      value: todayActiveUsersCount ?? '-',
+      note: `UV ${todayUniqueVisitors}`,
+      tone: 'cyan',
+    },
+  ];
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-gray-50 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
@@ -813,6 +901,23 @@ export default function DashboardPage() {
             {stats && (
               <>
                 {/* 统计卡片 */}
+                <section className="mb-6 lg:mb-8">
+                  <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">Project Operations</h2>
+                      <p className="text-sm text-gray-500">Today ({getTodayStr()})</p>
+                    </div>
+                    {!externalUserStats && (
+                      <p className="text-xs text-gray-400">Content metrics load from the project stats API</p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                    {operationMetrics.map((metric) => (
+                      <OperationMetricCard key={metric.label} {...metric} />
+                    ))}
+                  </div>
+                </section>
+
                 <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:mb-8 xl:grid-cols-3">
                   {/* 注册用户数（外部 API） */}
                   <div
@@ -823,20 +928,6 @@ export default function DashboardPage() {
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {stats.externalUserStats?.totalUsers ?? '-'}
                     </p>
-                    {stats.externalUserStats && (
-                      <div className="mt-2 text-xs text-gray-500 space-y-1">
-                        {stats.externalUserStats.newUsersToday !== undefined && (
-                          <p>Today: +{stats.externalUserStats.newUsersToday}</p>
-                        )}
-                        {stats.externalUserStats.newUsersThisWeek !== undefined && (
-                          <p>This Week: +{stats.externalUserStats.newUsersThisWeek}</p>
-                        )}
-                        {stats.externalUserStats.newUsersThisMonth !== undefined && (
-                          <p>This Month: +{stats.externalUserStats.newUsersThisMonth}</p>
-                        )}
-                        <p className="text-gray-400">Click for details</p>
-                      </div>
-                    )}
                   </div>
 
                   {/* 每日访问用户数（UV） - 可点击 */}
@@ -852,7 +943,6 @@ export default function DashboardPage() {
                         return todayData?.count ?? 0;
                       })()}
                     </p>
-                    <p className="text-xs text-gray-400 mt-2">Click for details</p>
                   </div>
 
                   {/* 每日登录用户数 - 可点击 */}
@@ -864,7 +954,6 @@ export default function DashboardPage() {
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {todayActiveUsersCount ?? '-'}
                     </p>
-                    <p className="text-xs text-gray-400 mt-2">Click for details</p>
                   </div>
                 </div>
 
