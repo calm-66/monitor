@@ -17,10 +17,25 @@ function getMetadataString(metadata: unknown, key: string): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function getCanonicalUserId(event: { userId: string | null; metadata?: unknown }): string | null {
+function getCanonicalUserId(event: { userId: string | null; metadata?: unknown }, userIdAliases?: Map<string, string>): string | null {
   const usOnlyUserId = getMetadataString(event.metadata, 'usOnlyUserId');
   if (usOnlyUserId) return `user_${usOnlyUserId}`;
+  if (event.userId && userIdAliases?.has(event.userId)) return userIdAliases.get(event.userId)!;
   return event.userId || null;
+}
+
+function buildUserIdAliases(events: Array<{ userId: string | null; metadata?: unknown }>): Map<string, string> {
+  const aliases = new Map<string, string>();
+
+  events.forEach((event) => {
+    const monitorUserId = getMetadataString(event.metadata, 'monitorUserId');
+    const usOnlyUserId = getMetadataString(event.metadata, 'usOnlyUserId');
+    if (!monitorUserId || !usOnlyUserId) return;
+
+    aliases.set(monitorUserId, `user_${usOnlyUserId}`);
+  });
+
+  return aliases;
 }
 
 // 处理 OPTIONS 预检请求
@@ -99,16 +114,17 @@ export async function GET(request: NextRequest) {
         country: true
       }
     });
+    const userIdAliases = buildUserIdAliases(uniqueVisitorEvents);
     const uniqueVisitorIds = new Set<string>();
     uniqueVisitorEvents.forEach((event) => {
-      const canonicalUserId = getCanonicalUserId(event);
+      const canonicalUserId = getCanonicalUserId(event, userIdAliases);
       if (canonicalUserId) uniqueVisitorIds.add(canonicalUserId);
     });
     
     // 按地区分组，每个地区存储独立的 canonical user key 集合
     const regionUserMap = new Map<string, Set<string>>();
     uniqueVisitorEvents.forEach((event) => {
-      const canonicalUserId = getCanonicalUserId(event);
+      const canonicalUserId = getCanonicalUserId(event, userIdAliases);
       if (!canonicalUserId) return;
 
       let regionName = event.city || event.region || event.country || 'Unknown';
@@ -136,7 +152,7 @@ export async function GET(request: NextRequest) {
     // 按北京时间日期分组，统计每天的独立访客数（去重 canonical user key）
     const uniqueVisitorsByDayMap = new Map<string, Set<string>>();
     uniqueVisitorEvents.forEach((event) => {
-      const canonicalUserId = getCanonicalUserId(event);
+      const canonicalUserId = getCanonicalUserId(event, userIdAliases);
       if (!canonicalUserId) return;
 
       const beijingDate = formatAsBeijingDate(event.createdAt);

@@ -897,7 +897,6 @@ export default function DashboardPage() {
                   >
                     <h2 className="text-sm font-medium text-gray-500">Today Published Posts</h2>
                     <p className="mt-2 text-3xl font-bold text-gray-900">{todayPostsCount}</p>
-                    <p className="mt-1 text-xs text-gray-400">{getTodayStr()}</p>
                   </div>
 
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6 lg:col-span-2">
@@ -946,11 +945,10 @@ export default function DashboardPage() {
                     className="cursor-pointer rounded-lg border-2 border-transparent bg-white p-5 shadow-md transition-shadow duration-200 hover:border-blue-500 hover:shadow-lg sm:p-6"
                     onClick={handleRegisteredCardClick}
                   >
-                    <h3 className="text-sm font-medium text-gray-500">Today Registered Users</h3>
+                    <h3 className="text-sm font-medium text-gray-500">Registered Users</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">
                       {todayRegisteredUsersCount}
                     </p>
-                    <p className="mt-1 text-xs text-gray-400">{getTodayStr()}</p>
                   </div>
 
                   {/* 每日访问用户数（UV） - 可点击 */}

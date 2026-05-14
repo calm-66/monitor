@@ -39,10 +39,25 @@ function getMetadataString(metadata: unknown, key: string): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function getCanonicalUserId(event: { userId: string | null; metadata?: unknown }): string | null {
+function getCanonicalUserId(event: { userId: string | null; metadata?: unknown }, userIdAliases?: Map<string, string>): string | null {
   const usOnlyUserId = getMetadataString(event.metadata, 'usOnlyUserId');
   if (usOnlyUserId) return `user_${usOnlyUserId}`;
+  if (event.userId && userIdAliases?.has(event.userId)) return userIdAliases.get(event.userId)!;
   return event.userId || null;
+}
+
+function buildUserIdAliases(events: Array<{ userId: string | null; metadata?: unknown }>): Map<string, string> {
+  const aliases = new Map<string, string>();
+
+  events.forEach((event) => {
+    const monitorUserId = getMetadataString(event.metadata, 'monitorUserId');
+    const usOnlyUserId = getMetadataString(event.metadata, 'usOnlyUserId');
+    if (!monitorUserId || !usOnlyUserId) return;
+
+    aliases.set(monitorUserId, `user_${usOnlyUserId}`);
+  });
+
+  return aliases;
 }
 
 /**
@@ -239,11 +254,12 @@ export async function GET(request: NextRequest) {
     }
 
     // 按用户 key 分组：UV 使用 canonical user key，Active Users 保持 login userId 口径。
+    const userIdAliases = type === 'uv' ? buildUserIdAliases(events) : new Map<string, string>();
     const userPageVisits = new Map<string, Map<string, number>>();
     const userEvents = new Map<string, typeof events[0]>(); // 保留每个用户的最新事件（用于其他字段）
     
     events.forEach(event => {
-      const userId = type === 'uv' ? getCanonicalUserId(event) : event.userId;
+      const userId = type === 'uv' ? getCanonicalUserId(event, userIdAliases) : event.userId;
       if (!userId) return;
       
       // 保留最新事件用于获取城市、设备等信息
@@ -264,7 +280,7 @@ export async function GET(request: NextRequest) {
     function getLatestPage(pageVisits: Map<string, number>, userId: string): string {
       // 获取该用户的所有事件，按时间排序
       const userEventsList = events
-        .filter(e => (type === 'uv' ? getCanonicalUserId(e) : e.userId) === userId)
+        .filter(e => (type === 'uv' ? getCanonicalUserId(e, userIdAliases) : e.userId) === userId)
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       
       // 返回最近访问的页面（有 pageUrl 且不是 login 事件的）
