@@ -148,6 +148,7 @@ export interface IpResolveStats {
 // 用户详细信息（用于 UV 和 Active Users 详情）
 export interface UserDetail {
   userId: string | null;
+  username: string | null;
   city: string;
   deviceType: string; // PC / iPhone / Android / Mobile / Tablet / Other
   browser: string;

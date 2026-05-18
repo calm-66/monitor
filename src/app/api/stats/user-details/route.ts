@@ -257,6 +257,7 @@ export async function GET(request: NextRequest) {
     const userIdAliases = type === 'uv' ? buildUserIdAliases(events) : new Map<string, string>();
     const userPageVisits = new Map<string, Map<string, number>>();
     const userEvents = new Map<string, typeof events[0]>(); // 保留每个用户的最新事件（用于其他字段）
+    const userNames = new Map<string, string>();
     
     events.forEach(event => {
       const userId = type === 'uv' ? getCanonicalUserId(event, userIdAliases) : event.userId;
@@ -265,6 +266,11 @@ export async function GET(request: NextRequest) {
       // 保留最新事件用于获取城市、设备等信息
       if (!userEvents.has(userId)) {
         userEvents.set(userId, event);
+      }
+
+      const username = getMetadataString(event.metadata, 'username');
+      if (username && !userNames.has(userId)) {
+        userNames.set(userId, username);
       }
       
       // 统计页面访问次数
@@ -307,6 +313,7 @@ export async function GET(request: NextRequest) {
 
       return {
         userId: String(userId), // 确保 userId 是字符串类型
+        username: userNames.get(userId) || null,
         city: normalizeRegionName(event),
         deviceType: device,
         browser: event.browser || 'Unknown',

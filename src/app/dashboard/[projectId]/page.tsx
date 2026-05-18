@@ -1253,10 +1253,11 @@ export default function DashboardPage() {
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">User List</h3>
                     <div className="overflow-x-auto rounded-lg border border-gray-200">
-                      <table className="min-w-[620px] w-full">
+                      <table className="min-w-[740px] w-full">
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Browser</th>
@@ -1284,6 +1285,9 @@ export default function DashboardPage() {
                                 ) : (
                                   <span className="text-gray-400">-</span>
                                 )}
+                              </td>
+                              <td className="max-w-[140px] truncate px-4 py-3 text-sm text-gray-900">
+                                {user.username || '-'}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-900">{user.city}</td>
                               <td className="px-4 py-3 text-sm text-gray-900">{user.deviceType}</td>
