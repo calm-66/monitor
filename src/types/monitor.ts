@@ -153,7 +153,6 @@ export interface UserDetail {
   deviceType: string; // PC / iPhone / Android / Mobile / Tablet / Other
   browser: string;
   localTime: string;
-  pageUrl: string | null;
 }
 
 export interface RegisteredUserDetail {
@@ -248,7 +247,6 @@ export interface UserDetailsResponse {
     total: number;
     cityDistribution: DistributionData[];
     deviceDistribution: DistributionData[];
-    pageDistribution?: DistributionData[]; // 页面路径分布
   };
 }
 

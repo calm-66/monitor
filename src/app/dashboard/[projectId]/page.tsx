@@ -352,7 +352,6 @@ export default function DashboardPage() {
   const [postDetails, setPostDetails] = useState<PostDetail[]>([]);
   const [cityDistribution, setCityDistribution] = useState<DistributionData[]>([]);
   const [deviceDistribution, setDeviceDistribution] = useState<DistributionData[]>([]);
-  const [pageDistribution, setPageDistribution] = useState<DistributionData[]>([]);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
   // 日期范围结束
@@ -569,7 +568,6 @@ export default function DashboardPage() {
           setUserDetails(data.data.users);
           setCityDistribution(data.data.cityDistribution || []);
           setDeviceDistribution(data.data.deviceDistribution || []);
-          setPageDistribution(data.data.pageDistribution || []);
         }
       }
     } catch (err) {
@@ -598,7 +596,6 @@ export default function DashboardPage() {
     setUserDetails([]);
     setCityDistribution([]);
     setDeviceDistribution([]);
-    setPageDistribution([]);
     setPostDetails([]);
     loadRegisteredUserDetails(today);
   }, [loadRegisteredUserDetails]);
@@ -612,7 +609,6 @@ export default function DashboardPage() {
     setRegisteredUserDetails([]);
     setCityDistribution([]);
     setDeviceDistribution([]);
-    setPageDistribution([]);
     loadPostDetails(today);
   }, [loadPostDetails]);
 
@@ -624,7 +620,6 @@ export default function DashboardPage() {
     setUserDetails([]);
     setCityDistribution([]);
     setDeviceDistribution([]);
-    setPageDistribution([]);
     setPostDetails([]);
     loadRegisteredUserDetails(date);
   }, [loadRegisteredUserDetails]);
@@ -637,7 +632,6 @@ export default function DashboardPage() {
     setRegisteredUserDetails([]);
     setCityDistribution([]);
     setDeviceDistribution([]);
-    setPageDistribution([]);
     loadPostDetails(date);
   }, [loadPostDetails]);
 
@@ -669,7 +663,6 @@ export default function DashboardPage() {
     setPostDetails([]);
     setCityDistribution([]);
     setDeviceDistribution([]);
-    setPageDistribution([]);
     setCopiedUserId(null);
   }, []);
 
@@ -1262,9 +1255,6 @@ export default function DashboardPage() {
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Browser</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Local Time</th>
-                            {selectedCard === 'active' && (
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page</th>
-                            )}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
@@ -1293,11 +1283,6 @@ export default function DashboardPage() {
                               <td className="px-4 py-3 text-sm text-gray-900">{user.deviceType}</td>
                               <td className="px-4 py-3 text-sm text-gray-900">{user.browser}</td>
                               <td className="px-4 py-3 text-sm text-gray-900 font-mono text-xs">{user.localTime}</td>
-                              {selectedCard === 'active' && (
-                                <td className="px-4 py-3 text-sm text-blue-600 max-w-[120px] truncate">
-                                  {user.pageUrl || '-'}
-                                </td>
-                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -1367,31 +1352,6 @@ export default function DashboardPage() {
                       )}
                     </div>
 
-                    {/* Page 分布饼图（仅 Active Users 显示） */}
-                    {selectedCard === 'active' && pageDistribution.length > 0 && (
-                      <div className="border border-gray-200 rounded-lg p-4">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Page Distribution</h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <PieChart>
-                            <Pie
-                              data={pageDistribution}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={renderPieLabel}
-                              outerRadius={80}
-                              fill="#3B82F6"
-                              dataKey="count"
-                            >
-                              {pageDistribution.map((_, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip content={PieTooltip} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}

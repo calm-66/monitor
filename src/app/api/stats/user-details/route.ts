@@ -125,19 +125,6 @@ export async function GET(request: NextRequest) {
       end = parsed.end;
     }
 
-    // 解析页面路径（只保留 pathname，不包含域名）
-    function parsePagePath(url: string | null): string {
-      if (!url) return '-';
-      try {
-        // 尝试解析 URL，只返回 pathname 部分
-        const parsed = new URL(url);
-        return parsed.pathname;
-      } catch {
-        // 如果 URL 格式无效，返回原始字符串或 '-'
-        return url || '-';
-      }
-    }
-
     function normalizeRegionName(event: { city: string | null; region?: string | null; country: string | null }): string {
       let regionName = event.city || event.region || event.country || 'Unknown';
       if (regionName && regionName.endsWith('市') && regionName.length > 2) {
@@ -211,7 +198,6 @@ export async function GET(request: NextRequest) {
             os: true,
             browser: true,
             createdAt: true,
-            pageUrl: true,
             metadata: true
           },
           orderBy: {
@@ -243,7 +229,6 @@ export async function GET(request: NextRequest) {
           os: true,
           browser: true,
           createdAt: true,
-          pageUrl: true,
           metadata: true
         },
         orderBy: {
@@ -255,7 +240,6 @@ export async function GET(request: NextRequest) {
 
     // 按用户 key 分组：UV 使用 canonical user key，Active Users 保持 login userId 口径。
     const userIdAliases = type === 'uv' ? buildUserIdAliases(events) : new Map<string, string>();
-    const userPageVisits = new Map<string, Map<string, number>>();
     const userEvents = new Map<string, typeof events[0]>(); // 保留每个用户的最新事件（用于其他字段）
     const userNames = new Map<string, string>();
     
@@ -272,44 +256,13 @@ export async function GET(request: NextRequest) {
       if (username && !userNames.has(userId)) {
         userNames.set(userId, username);
       }
-      
-      // 统计页面访问次数
-      const pagePath = parsePagePath(event.pageUrl);
-      if (!userPageVisits.has(userId)) {
-        userPageVisits.set(userId, new Map<string, number>());
-      }
-      const pageMap = userPageVisits.get(userId)!;
-      pageMap.set(pagePath, (pageMap.get(pagePath) || 0) + 1);
     });
-
-    // 获取用户最近访问的页面（按时间排序，取最后一个访问的页面）
-    function getLatestPage(pageVisits: Map<string, number>, userId: string): string {
-      // 获取该用户的所有事件，按时间排序
-      const userEventsList = events
-        .filter(e => (type === 'uv' ? getCanonicalUserId(e, userIdAliases) : e.userId) === userId)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      
-      // 返回最近访问的页面（有 pageUrl 且不是 login 事件的）
-      for (const event of userEventsList) {
-        const pagePath = parsePagePath(event.pageUrl);
-        if (pagePath !== '-' && pagePath !== '/') {
-          return pagePath;
-        }
-      }
-      
-      // 如果没有其他页面，返回第一个（可能是 '/'）
-      return userEventsList.length > 0 ? parsePagePath(userEventsList[0].pageUrl) : '-';
-    }
 
     // 构建用户详细信息
     const userDetails = Array.from(userEvents.entries()).map(([userId, event]) => {
       const offset = getTimezoneOffset(event.city, event.country);
       const localTime = convertUTCToLocalTime(event.createdAt, offset);
       const device = categorizeDevice(event.deviceType, event.os);
-      
-      // 获取该用户最近访问的页面
-      const pageVisits = userPageVisits.get(userId);
-      const latestPage = pageVisits ? getLatestPage(pageVisits, userId) : '-';
 
       return {
         userId: String(userId), // 确保 userId 是字符串类型
@@ -317,8 +270,7 @@ export async function GET(request: NextRequest) {
         city: normalizeRegionName(event),
         deviceType: device,
         browser: event.browser || 'Unknown',
-        localTime,
-        pageUrl: latestPage
+        localTime
       };
     });
 
@@ -342,26 +294,13 @@ export async function GET(request: NextRequest) {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
-    // 计算页面路径分布（仅针对 active 类型）
-    const pageMap = new Map<string, number>();
-    if (type === 'active') {
-      userDetails.forEach(user => {
-        const page = user.pageUrl || '-';
-        pageMap.set(page, (pageMap.get(page) || 0) + 1);
-      });
-    }
-    const pageDistribution = Array.from(pageMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-
     return NextResponse.json({ 
       success: true, 
       data: {
         users: userDetails,
         total: userDetails.length,
         cityDistribution,
-        deviceDistribution,
-        pageDistribution: type === 'active' ? pageDistribution : undefined
+        deviceDistribution
       }
     }, { headers: corsHeaders });
   } catch (error) {
