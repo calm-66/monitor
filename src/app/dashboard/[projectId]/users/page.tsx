@@ -208,6 +208,8 @@ export default function UsOnlyUsersPage() {
           </a>
         </div>
 
+        <UserUsageLookup projectId={projectId} />
+
         <section className="mb-6 rounded-lg bg-white p-5 shadow-md">
           <h2 className="mb-4 text-lg font-semibold text-gray-800">User Management</h2>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -331,8 +333,6 @@ export default function UsOnlyUsersPage() {
             </div>
           )}
         </section>
-
-        <UserUsageLookup projectId={projectId} />
 
         {error && (
           <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
