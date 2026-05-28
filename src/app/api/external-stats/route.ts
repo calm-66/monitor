@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 请求参数:
  * - statsApiUrl: UsOnly 的 stats API URL
  * - apiKey: 可选的 API Key
+ * - startDate/endDate: 可选的日期范围（YYYY-MM-DD），会透传给 UsOnly
  * 
  * 响应格式:
  * {
@@ -21,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { statsApiUrl, apiKey } = body;
+    const { statsApiUrl, apiKey, startDate, endDate } = body;
 
     // 验证必填参数
     if (!statsApiUrl || typeof statsApiUrl !== 'string') {
@@ -32,13 +33,22 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证 URL 格式
+    let externalUrl: URL;
     try {
-      new URL(statsApiUrl);
+      externalUrl = new URL(statsApiUrl);
     } catch {
       return NextResponse.json(
         { success: false, error: 'Invalid statsApiUrl format' },
         { status: 400 }
       );
+    }
+
+    if (typeof startDate === 'string' && startDate.trim()) {
+      externalUrl.searchParams.set('startDate', startDate.trim());
+    }
+
+    if (typeof endDate === 'string' && endDate.trim()) {
+      externalUrl.searchParams.set('endDate', endDate.trim());
     }
 
     // 构建请求头
@@ -51,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 调用 UsOnly 的 API（服务器对服务器，无 CORS 限制）
-    const response = await fetch(statsApiUrl, {
+    const response = await fetch(externalUrl.toString(), {
       method: 'GET',
       headers,
     });

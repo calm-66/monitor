@@ -45,17 +45,9 @@ const DEVICE_COLORS = {
   'Other': '#6B7280',
 };
 
-// 获取当前月份的字符串（如 "April 2026"）
-function getCurrentMonthStr(): string {
-  const now = new Date();
-  return now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-}
-
 // 格式化日期为短格式（如 "04-10"）
 function formatShortDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const [, month, day] = dateStr.split('-');
   return `${month}-${day}`;
 }
 
@@ -84,16 +76,9 @@ function getXAxisTicks(data: Array<{ date: string }>): string[] {
   return [firstDate, ...middleDates, lastDate];
 }
 
-// 过滤出当前月份的数据
-function filterCurrentMonth<T extends { date: string }>(data: T[]): T[] {
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  
-  return data.filter(item => {
-    const date = new Date(item.date);
-    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-  });
+// 过滤出指定月份的数据（monthValue 格式：YYYY-MM）
+function filterSelectedMonth<T extends { date: string }>(data: T[], monthValue: string): T[] {
+  return data.filter(item => item.date.startsWith(`${monthValue}-`));
 }
 
 // 获取当天日期字符串（YYYY-MM-DD 格式）
@@ -105,12 +90,51 @@ function getTodayStr(): string {
   return `${year}-${month}-${day}`;
 }
 
-// 获取当前月份的第一天（YYYY-MM-DD 格式）
-function getCurrentMonthStart(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}-01`;
+function getCurrentMonthValue(): string {
+  return getTodayStr().slice(0, 7);
+}
+
+function getMonthStart(monthValue: string): string {
+  return `${monthValue}-01`;
+}
+
+function getMonthEnd(monthValue: string): string {
+  if (monthValue === getCurrentMonthValue()) {
+    return getTodayStr();
+  }
+
+  const [year, month] = monthValue.split('-').map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${monthValue}-${String(lastDay).padStart(2, '0')}`;
+}
+
+function getMonthLabel(monthValue: string): string {
+  const [year, month] = monthValue.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function shiftMonth(monthValue: string, offset: number): string {
+  const [year, month] = monthValue.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1 + offset, 1));
+  const nextYear = date.getUTCFullYear();
+  const nextMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+  return `${nextYear}-${nextMonth}`;
+}
+
+function parseDateKey(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function formatUtcDateKey(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function formatDateTime(value: string | null): string {
@@ -135,12 +159,11 @@ function getRegisteredUserStatusLabel(status: RegisteredUserDetail['status']): s
 // 填充完整日期范围，缺失的日期填充 0 值（从当月 1 号到指定结束日期）
 function fillMissingDates<T extends { date: string; count: number }>(
   data: T[],
-  _startDate: string,
+  startDate: string,
   endDate: string
 ): T[] {
-  // 使用当月 1 号作为开始日期，而不是传入的 startDate（可能跨月）
-  const start = new Date(getCurrentMonthStart());
-  const end = new Date(endDate);
+  const start = parseDateKey(startDate);
+  const end = parseDateKey(endDate);
   const dataMap = new Map<string, number>();
   
   // 建立现有数据的映射
@@ -152,10 +175,10 @@ function fillMissingDates<T extends { date: string; count: number }>(
   const result: T[] = [];
   const current = new Date(start);
   while (current <= end) {
-    const dateStr = current.toISOString().split('T')[0];
+    const dateStr = formatUtcDateKey(current);
     const count = dataMap.get(dateStr) || 0;
     result.push({ date: dateStr, count } as T);
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   
   return result;
@@ -337,11 +360,13 @@ export default function DashboardPage() {
   const [feedbackCount, setFeedbackCount] = useState(0);
   const [todayActiveUsersCount, setTodayActiveUsersCount] = useState<number | null>(null);
 
-  // 日期范围
-  const [startDate, setStartDate] = useState(() => {
-    return getCurrentMonthStart();
-  });
-  const [endDate, setEndDate] = useState(() => getTodayStr());
+  // 月份范围
+  const [selectedMonth, setSelectedMonth] = useState(() => getCurrentMonthValue());
+  const currentMonthValue = getCurrentMonthValue();
+  const startDate = getMonthStart(selectedMonth);
+  const endDate = getMonthEnd(selectedMonth);
+  const selectedMonthLabel = getMonthLabel(selectedMonth);
+  const isCurrentMonthSelected = selectedMonth === currentMonthValue;
 
   // 用户详细信息面板状态
   const [selectedCard, setSelectedCard] = useState<'registered' | 'uv' | 'active' | 'posts' | null>(null);
@@ -354,8 +379,6 @@ export default function DashboardPage() {
   const [deviceDistribution, setDeviceDistribution] = useState<DistributionData[]>([]);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
-  // 日期范围结束
-  const endDateStr = endDate;
 
   const loadProjectInfo = useCallback(async () => {
     try {
@@ -389,7 +412,9 @@ export default function DashboardPage() {
         },
         body: JSON.stringify({
           statsApiUrl,
-          apiKey: apiKey
+          apiKey,
+          startDate,
+          endDate,
         })
       });
       
@@ -404,7 +429,7 @@ export default function DashboardPage() {
       console.error('Failed to load external user stats:', err);
       return null; // API 调用失败不影响其他功能
     }
-  }, [projectInfo, apiKey]);
+  }, [projectInfo, apiKey, startDate, endDate]);
 
   // 加载统计数据
   const loadStats = useCallback(async () => {
@@ -666,6 +691,26 @@ export default function DashboardPage() {
     setCopiedUserId(null);
   }, []);
 
+  const handleMonthChange = useCallback((monthValue: string) => {
+    if (!monthValue) return;
+
+    const nextMonth = monthValue > currentMonthValue ? currentMonthValue : monthValue;
+    setSelectedMonth(nextMonth);
+    handleClosePanel();
+  }, [currentMonthValue, handleClosePanel]);
+
+  const handlePreviousMonth = useCallback(() => {
+    handleMonthChange(shiftMonth(selectedMonth, -1));
+  }, [selectedMonth, handleMonthChange]);
+
+  const handleNextMonth = useCallback(() => {
+    handleMonthChange(shiftMonth(selectedMonth, 1));
+  }, [selectedMonth, handleMonthChange]);
+
+  const handleCurrentMonth = useCallback(() => {
+    handleMonthChange(currentMonthValue);
+  }, [currentMonthValue, handleMonthChange]);
+
   // 复制 User ID 到剪贴板
   const handleCopyUserId = useCallback(async (userId: string) => {
     try {
@@ -789,7 +834,7 @@ export default function DashboardPage() {
     }
 
     const baseTitle = selectedCard === 'uv' ? 'Unique Visitors' : 'Active Users';
-    if (selectedRegion) return `${baseTitle} - ${selectedRegion} (${getCurrentMonthStr()})`;
+    if (selectedRegion) return `${baseTitle} - ${selectedRegion} (${selectedMonthLabel})`;
     if (!selectedDate) return baseTitle;
     
     const today = getTodayStr();
@@ -805,6 +850,14 @@ export default function DashboardPage() {
       ? postDetails.length
       : userDetails.length;
   const externalUserStats = stats?.externalUserStats;
+  const dailyPostsForMonth = filterSelectedMonth(externalUserStats?.dailyPosts || [], selectedMonth);
+  const dailyPostsChartData = fillMissingDates(dailyPostsForMonth, startDate, endDate);
+  const dailyRegisteredUsersForMonth = filterSelectedMonth(externalUserStats?.dailyRegisteredUsers || [], selectedMonth);
+  const dailyRegisteredUsersChartData = fillMissingDates(dailyRegisteredUsersForMonth, startDate, endDate);
+  const uniqueVisitorsForMonth = filterSelectedMonth(stats?.uniqueVisitorsByDay || [], selectedMonth);
+  const uniqueVisitorsChartData = fillMissingDates(uniqueVisitorsForMonth, startDate, endDate);
+  const dailyActiveUsersForMonth = filterSelectedMonth(stats?.dailyActiveUsers || [], selectedMonth);
+  const dailyActiveUsersChartData = fillMissingDates(dailyActiveUsersForMonth, startDate, endDate);
   const todayPostsCount = externalUserStats?.postsToday ?? externalUserStats?.operationStats?.postsToday ?? '-';
   const todayRegisteredUsersCount = (() => {
     if (!externalUserStats) return '-';
@@ -826,10 +879,45 @@ export default function DashboardPage() {
               <div className="min-w-0">
                 <h1 className="break-words text-2xl font-bold text-gray-900 sm:text-3xl">{projectName || 'Dashboard'}</h1>
                 <p className="text-gray-500 text-sm mt-1">
-                  {getCurrentMonthStr()}
+                  {selectedMonthLabel}
                 </p>
               </div>
-              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-2 shadow-sm sm:flex sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={handlePreviousMonth}
+                    className="rounded-md px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    Previous
+                  </button>
+                  <input
+                    id="dashboard-month"
+                    type="month"
+                    value={selectedMonth}
+                    max={currentMonthValue}
+                    onChange={(event) => handleMonthChange(event.target.value)}
+                    className="min-w-0 rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label="Month"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    disabled={isCurrentMonthSelected}
+                    className="rounded-md px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCurrentMonth}
+                    disabled={isCurrentMonthSelected}
+                    className="col-span-3 rounded-md px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1"
+                  >
+                    This Month
+                  </button>
+                </div>
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
                 <a
                   href={`/dashboard/${projectId}/feedback`}
                   className="relative flex items-center justify-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 sm:px-4"
@@ -861,6 +949,7 @@ export default function DashboardPage() {
                 >
                   Back to Projects
                 </a>
+                </div>
               </div>
             </div>
 
@@ -893,23 +982,15 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6 lg:col-span-2">
-                    <h2 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Published Posts ({getCurrentMonthStr()})</h2>
-                    {externalUserStats?.dailyPosts && externalUserStats.dailyPosts.length > 0 ? (
+                    <h2 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Published Posts ({selectedMonthLabel})</h2>
+                    {dailyPostsForMonth.length > 0 ? (
                       <ResponsiveContainer width="100%" height={260}>
-                        <BarChart data={fillMissingDates(
-                          filterCurrentMonth(externalUserStats.dailyPosts),
-                          startDate,
-                          endDate
-                        )}>
+                        <BarChart data={dailyPostsChartData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="date"
                             tickFormatter={formatShortDate}
-                            ticks={getXAxisTicks(fillMissingDates(
-                              filterCurrentMonth(externalUserStats.dailyPosts),
-                              startDate,
-                              endDate
-                            ))}
+                            ticks={getXAxisTicks(dailyPostsChartData)}
                             interval="preserveStartEnd"
                           />
                           <YAxis allowDecimals={false} />
@@ -976,24 +1057,16 @@ export default function DashboardPage() {
                   {/* 每日独立访客数（UV）柱状图 - 可点击 */}
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
                     <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">
-                      Daily Registered Users ({getCurrentMonthStr()}, Total: {totalRegisteredUsersCount})
+                      Daily Registered Users ({selectedMonthLabel}, Total: {totalRegisteredUsersCount})
                     </h3>
-                    {stats.externalUserStats?.dailyRegisteredUsers && stats.externalUserStats.dailyRegisteredUsers.length > 0 ? (
+                    {dailyRegisteredUsersForMonth.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={fillMissingDates(
-                          filterCurrentMonth(stats.externalUserStats.dailyRegisteredUsers),
-                          startDate,
-                          endDate
-                        )}>
+                        <BarChart data={dailyRegisteredUsersChartData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="date"
                             tickFormatter={formatShortDate}
-                            ticks={getXAxisTicks(fillMissingDates(
-                              filterCurrentMonth(stats.externalUserStats.dailyRegisteredUsers),
-                              startDate,
-                              endDate
-                            ))}
+                            ticks={getXAxisTicks(dailyRegisteredUsersChartData)}
                             interval="preserveStartEnd"
                           />
                           <YAxis allowDecimals={false} />
@@ -1016,23 +1089,15 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
-                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Unique Visitors ({getCurrentMonthStr()})</h3>
-                    {stats.uniqueVisitorsByDay && stats.uniqueVisitorsByDay.length > 0 ? (
+                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Unique Visitors ({selectedMonthLabel})</h3>
+                    {uniqueVisitorsForMonth.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={fillMissingDates(
-                          filterCurrentMonth(stats.uniqueVisitorsByDay),
-                          startDate,
-                          endDate
-                        )}>
+                        <BarChart data={uniqueVisitorsChartData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
                             dataKey="date" 
                             tickFormatter={formatShortDate}
-                            ticks={getXAxisTicks(fillMissingDates(
-                              filterCurrentMonth(stats.uniqueVisitorsByDay),
-                              startDate,
-                              endDate
-                            ))}
+                            ticks={getXAxisTicks(uniqueVisitorsChartData)}
                             interval="preserveStartEnd"
                           />
                           <YAxis allowDecimals={false} />
@@ -1056,23 +1121,15 @@ export default function DashboardPage() {
 
                   {/* 每日登录用户数柱状图 - 可点击 */}
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
-                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Active Users ({getCurrentMonthStr()})</h3>
-                    {stats.dailyActiveUsers && stats.dailyActiveUsers.length > 0 ? (
+                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Daily Active Users ({selectedMonthLabel})</h3>
+                    {dailyActiveUsersForMonth.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={fillMissingDates(
-                          filterCurrentMonth(stats.dailyActiveUsers),
-                          startDate,
-                          endDate
-                        )}>
+                        <BarChart data={dailyActiveUsersChartData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
                             dataKey="date" 
                             tickFormatter={formatShortDate}
-                            ticks={getXAxisTicks(fillMissingDates(
-                              filterCurrentMonth(stats.dailyActiveUsers),
-                              startDate,
-                              endDate
-                            ))}
+                            ticks={getXAxisTicks(dailyActiveUsersChartData)}
                             interval="preserveStartEnd"
                           />
                           <YAxis allowDecimals={false} />
@@ -1096,7 +1153,7 @@ export default function DashboardPage() {
 
                   {/* IP 地址解析饼状图 - 显示已登录用户的地区分布 */}
                   <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md sm:p-6">
-                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Unique Visitors Locations (Top 10 Regions, {getCurrentMonthStr()})</h3>
+                    <h3 className="mb-4 text-base font-semibold text-gray-800 sm:text-lg">Unique Visitors Locations (Top 10 Regions, {selectedMonthLabel})</h3>
                     {stats.activeUsersByRegion && stats.activeUsersByRegion.length > 0 ? (
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                         <div className="h-56 min-w-0 flex-1 sm:h-64">
