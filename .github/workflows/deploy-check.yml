@@ -41,7 +41,22 @@ jobs:
           echo "DASHBOARD_PASSWORD=${{ secrets.DASHBOARD_PASSWORD }}" >> "$GITHUB_ENV"
 
       - name: Run database migrations
-        run: npm run db:deploy
+        run: |
+          set +e
+          npm run db:deploy 2>&1 | tee /tmp/prisma-migrate.log
+          deploy_status=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$deploy_status" -eq 0 ]; then
+            exit 0
+          fi
+
+          if grep -q "P3005" /tmp/prisma-migrate.log; then
+            npx prisma migrate resolve --applied 20260413000000_baseline_existing_schema
+            npm run db:deploy
+          else
+            exit "$deploy_status"
+          fi
 
       - name: Build
         run: npm run build
