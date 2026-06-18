@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -21,7 +22,17 @@ model Project {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   events      Event[]
-  ipLimitTrackers IpLimitTracker[]
+}
+
+// Session Token 表 - 用于 Dashboard 自动登录
+model SessionToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([token])
 }
 
 // 事件表 - 记录所有访问事件
@@ -64,23 +75,36 @@ model Event {
   // 额外元数据
   metadata Json? // 额外数据（JSON 格式）
 
-  createdAt DateTime // 事件创建时间（由客户端提供当地时间）
+  createdAt DateTime // 事件创建时间（UTC 时间，由客户端通过 `new Date().toISOString()` 提供）
 
   @@index([projectId, createdAt]) // 按项目和时间查询
   @@index([projectId, eventType]) // 按项目和类型查询
   @@index([country]) // 按地区统计
 }
 
-// IP 解析限制追踪表 - 用于统计超出限制的情况
-model IpLimitTracker {
-  id               String @id @default(cuid())
-  projectId        String
-  project          Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  date             String // 日期字符串 YYYY-MM-DD
-  totalRequests    Int    @default(0) // 总请求数
-  successfulResolves Int    @default(0) // 成功解析数
-  rateLimitedCount Int    @default(0) // 被限流次数
-  failedCount      Int    @default(0) // 失败次数
+// 反馈已读状态表 - 记录 Dashboard 中已查看的 feedback 事件
+model FeedbackRead {
+  id        String   @id @default(cuid())
+  projectId String
+  eventId   String   @unique
+  readAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  @@unique([projectId, date]) // 每天一条记录
+  @@index([projectId])
 }
+
+// 支付事件表 - 记录 UsOnly 支付事件
+model PaymentEvent {
+  id             String   @id @default(cuid())
+  source         String   // 数据来源：usonly
+  eventType      String   // payment.completed / donation.created
+  orderId        String
+  amount         Decimal  @db.Decimal(10, 2)
+  currency       String   @default("CNY")
+  metadata       Json?    // 额外元数据
+  receivedAt     DateTime @default(now())
+
+  @@index([eventType])
+  @@index([receivedAt])
+}
+

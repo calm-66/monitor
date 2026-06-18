@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Project } from '@/types/monitor';
 
 interface ProjectWithCount extends Project {
@@ -8,18 +9,108 @@ interface ProjectWithCount extends Project {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [projects, setProjects] = useState<ProjectWithCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [newProjectDomain, setNewProjectDomain] = useState('');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // 检查 session 状态
+  useEffect(() => {
+    const checkSession = async () => {
+      const token = localStorage.getItem('monitor_session_token');
+      if (!token) {
+        setIsLoggedIn(false);
+        setIsCheckingSession(false);
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        
+        const data = await res.json();
+        if (res.ok && data.valid) {
+          setIsLoggedIn(true);
+        } else {
+          localStorage.removeItem('monitor_session_token');
+          setIsLoggedIn(false);
+        }
+      } catch (error) {
+        console.error('检查 session 失败:', error);
+        setIsLoggedIn(false);
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+    
+    checkSession();
+  }, []);
+
   // 加载项目列表
   useEffect(() => {
     loadProjects();
   }, []);
+
+  // 处理登录
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '登录失败');
+      }
+
+      if (data.success) {
+        localStorage.setItem('monitor_session_token', data.data.token);
+        setIsLoggedIn(true);
+        setPassword('');
+      }
+    } catch (err: any) {
+      setLoginError(err.message);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // 处理登出
+  const handleLogout = async () => {
+    const token = localStorage.getItem('monitor_session_token');
+    if (token) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+      } catch (error) {
+        console.error('登出失败:', error);
+      }
+    }
+    localStorage.removeItem('monitor_session_token');
+    setIsLoggedIn(false);
+  };
 
   const loadProjects = async () => {
     try {
@@ -115,64 +206,79 @@ export default function Home() {
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
-  return (
-    <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Monitor Platform</h1>
+  // 检查 session 中，显示登录弹窗
+  if (isCheckingSession) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-500">Checking session...</p>
+        </div>
+      </main>
+    );
+  }
 
-        {/* 创建项目表单 */}
-        <section className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Create New Project</h2>
-          <form onSubmit={handleCreateProject} className="space-y-4">
+  // 未登录时显示登录表单
+  if (!isLoggedIn) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 px-4 py-8">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+          <h1 className="mb-2 text-center text-2xl font-bold text-gray-800 sm:text-3xl">
+            Monitor Dashboard
+          </h1>
+          <p className="text-center text-gray-500 mb-6">
+            管理员登录
+          </p>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Project Name *
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                密码
               </label>
               <input
-                type="text"
-                id="name"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="my-project"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                pattern="[a-zA-Z0-9-_]+"
-                title="Only letters, numbers, hyphens, and underscores allowed"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                placeholder="请输入管理员密码"
               />
             </div>
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <input
-                type="text"
-                id="description"
-                value={newProjectDescription}
-                onChange={(e) => setNewProjectDescription(e.target.value)}
-                placeholder="Optional description"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              />
-            </div>
-            <div>
-              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
-                Domain
-              </label>
-              <input
-                type="text"
-                id="domain"
-                value={newProjectDomain}
-                onChange={(e) => setNewProjectDomain(e.target.value)}
-                placeholder="usonly-preview.vercel.app or usonly.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              />
-            </div>
+
+            {loginError && (
+              <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                {loginError}
+              </div>
+            )}
+
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loginLoading}
+              className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition disabled:opacity-50"
             >
-              Create Project
+              {loginLoading ? '登录中...' : '登录'}
             </button>
           </form>
-        </section>
+        </div>
+      </main>
+    );
+  }
+
+  // 已登录时显示项目列表
+  return (
+    <main className="min-h-screen overflow-x-hidden bg-gray-50 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="break-words text-3xl font-bold text-gray-900 sm:text-4xl">Monitor Platform</h1>
+          <div className="flex items-center">
+            <button
+              onClick={handleLogout}
+              className="rounded-md bg-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-300 sm:text-base"
+            >
+              退出登录
+            </button>
+          </div>
+        </div>
 
         {/* 消息提示 */}
         {error && (
@@ -187,66 +293,66 @@ export default function Home() {
         )}
 
         {/* 项目列表 */}
-        <section className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Projects</h2>
+        <section className="mb-6 rounded-lg bg-white p-5 shadow-md sm:mb-8 sm:p-6">
+          <h2 className="mb-4 text-xl font-semibold text-gray-800">Projects</h2>
           {loading ? (
             <p className="text-gray-500">Loading...</p>
           ) : projects.length === 0 ? (
-            <p className="text-gray-500">No projects yet. Create one above!</p>
+            <p className="text-gray-500">No projects yet. Create one below!</p>
           ) : (
             <div className="space-y-4">
               {projects.map((project) => (
                 <div
                   key={project.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900">{project.name}</h3>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words text-lg font-medium text-gray-900">{project.name}</h3>
                       {project.description && (
-                        <p className="text-gray-500 text-sm mt-1">{project.description}</p>
+                        <p className="mt-1 break-words text-sm text-gray-500">{project.description}</p>
                       )}
-                      <div className="text-gray-500 text-sm mt-1">
+                      <div className="mt-1 text-sm text-gray-500">
                         {project.domain && (
-                          <p>Domain: {project.domain}</p>
+                          <p className="break-words">Domain: {project.domain}</p>
                         )}
                       </div>
                       <div className="mt-3 space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-500 min-w-[80px]">Project ID:</span>
-                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700 flex-1 truncate">
+                        <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] items-center gap-2">
+                          <span className="text-sm text-gray-500">Project ID:</span>
+                          <code className="min-w-0 truncate rounded bg-gray-100 px-2 py-1 text-sm text-gray-700">
                             {project.id}
                           </code>
                           <button
                             onClick={() => copyProjectId(project.id)}
-                            className="text-blue-600 hover:text-blue-800 text-sm whitespace-nowrap"
+                            className="whitespace-nowrap text-sm text-blue-600 hover:text-blue-800"
                           >
                             Copy
                           </button>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-500 min-w-[80px]">API Key:</span>
-                          <code className="bg-gray-100 px-2 py-1 rounded text-sm text-gray-700 flex-1 truncate">
+                        <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] items-center gap-2">
+                          <span className="text-sm text-gray-500">API Key:</span>
+                          <code className="min-w-0 truncate rounded bg-gray-100 px-2 py-1 text-sm text-gray-700">
                             {project.apiKey.substring(0, 20)}...
                           </code>
                           <button
                             onClick={() => copyApiKey(project.apiKey)}
-                            className="text-blue-600 hover:text-blue-800 text-sm whitespace-nowrap"
+                            className="whitespace-nowrap text-sm text-blue-600 hover:text-blue-800"
                           >
                             Copy
                           </button>
                         </div>
                       </div>
-                      <div className="mt-3 flex items-center space-x-4">
+                      <div className="mt-3 flex flex-wrap items-center gap-4">
                         <a
                           href={`/dashboard/${project.id}`}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
                         >
                           View Dashboard →
                         </a>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end space-y-2">
+                    <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-start sm:space-y-2">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         project.isActive
                           ? 'bg-green-100 text-green-800'
@@ -271,38 +377,60 @@ export default function Home() {
           )}
         </section>
 
-        {/* 使用说明 */}
-        <section className="bg-white rounded-lg shadow-md p-6 mt-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">How to Use</h2>
-          <div className="prose prose-sm text-gray-600">
-            <ol className="list-decimal list-inside space-y-2">
-              <li>Create a new project above</li>
-              <li>Copy the API Key for your project</li>
-              <li>Add the monitoring script to your website:</li>
-            </ol>
-            <pre className="bg-gray-100 p-4 rounded-md mt-2 overflow-x-auto text-gray-800">
-{`<script src="https://your-domain.com/monitor.js"></script>
-<script>
-  Monitor.init({
-    projectId: 'your-project-id',
-    apiKey: 'your-api-key',
-    endpoint: 'https://your-domain.com/api/events'
-  });
-</script>`}
-            </pre>
-            <p className="mt-4 text-sm text-gray-500">
-              Or use data attributes for automatic initialization:
-            </p>
-            <pre className="bg-gray-100 p-4 rounded-md mt-2 overflow-x-auto text-gray-800">
-{`<script 
-  src="https://your-domain.com/monitor.js"
-  data-project-id="your-project-id"
-  data-api-key="your-api-key"
-  data-endpoint="https://your-domain.com/api/events"
-></script>`}
-            </pre>
-          </div>
+        {/* 创建项目表单 */}
+        <section className="rounded-lg bg-white p-5 shadow-md sm:p-6">
+          <h2 className="mb-4 text-xl font-semibold text-gray-800">Create New Project</h2>
+          <form onSubmit={handleCreateProject} className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Project Name *
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="my-project"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                pattern="[a-zA-Z0-9-_]+"
+                title="Only letters, numbers, hyphens, and underscores allowed"
+              />
+            </div>
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <input
+                type="text"
+                id="description"
+                value={newProjectDescription}
+                onChange={(e) => setNewProjectDescription(e.target.value)}
+                placeholder="Optional description"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
+                Domain
+              </label>
+              <input
+                type="text"
+                id="domain"
+                value={newProjectDomain}
+                onChange={(e) => setNewProjectDomain(e.target.value)}
+                placeholder="usonly-preview.vercel.app or usonly.com"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-auto"
+            >
+              Create Project
+            </button>
+          </form>
         </section>
+
       </div>
     </main>
   );

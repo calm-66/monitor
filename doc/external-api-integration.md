@@ -476,6 +476,7 @@ const loadExternalOrderStats = useCallback(async () => {
 
 ## 安全考虑
 
+
 1. **API Key 认证**
    - 使用环境变量配置密钥
    - 通过 `X-API-Key` 请求头传递

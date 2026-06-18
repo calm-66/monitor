@@ -1,29 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { resolveGeoIP, parseUserAgent } from '@/lib/geoip';
-import { getClientIP, formatAsBeijingDate, log } from '@/lib/utils';
+import { getClientIP, log } from '@/lib/utils';
 import { EventPayload } from '@/types/monitor';
 
-// CORS 配置
-function getCorsHeaders(origin?: string) {
-  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').filter(Boolean) || ['*'];
-  const allowedOrigin = allowedOrigins.includes('*') || (origin && allowedOrigins.includes(origin))
-    ? origin || '*'
-    : allowedOrigins[0] || '*';
-  
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Project-ID',
-    'Access-Control-Max-Age': '86400',
-  };
-}
+// 简单的 CORS 头（允许所有来源）
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Project-ID',
+};
 
 // 处理 OPTIONS 预检请求
 export async function OPTIONS(request: NextRequest) {
-  const origin = request.headers.get('origin') || undefined;
-  const corsHeaders = getCorsHeaders(origin);
-  
   return new Response(null, {
     status: 204,
     headers: corsHeaders
@@ -35,9 +24,6 @@ export async function OPTIONS(request: NextRequest) {
  * 接收事件上报（支持批量）
  */
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get('origin') || undefined;
-  const corsHeaders = getCorsHeaders(origin);
-  
   try {
     // 验证 API Key
     const apiKey = request.headers.get('X-API-Key');
@@ -61,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (!projectId) {
       console.log('[API /events] Missing Project ID');
       return NextResponse.json(
-        { success: false, error: 'Missing X-Project-ID header' },
+        { success: false, error: 'Missing Project ID' },
         { status: 401, headers: corsHeaders }
       );
     }
@@ -106,20 +92,27 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 获取客户端 IP
-    const clientIP = getClientIP(request.headers);
-    
-    // 解析 IP 地理位置（带限流处理）
-    const geoLocation = await resolveGeoIP(clientIP || '');
-    const isRateLimited = geoLocation.status === 'fail' && geoLocation.message === 'rate limited';
-    const isFailed = geoLocation.status === 'fail' && geoLocation.message !== 'rate limited';
+    // 获取客户端 IP（优先使用 payload 中的 ipAddress 字段）
+    const headerClientIP = getClientIP(request.headers);
     
     // 解析 User-Agent
     const firstEvent = events[0];
     const deviceInfo = parseUserAgent(firstEvent?.userAgent);
     
+    // 先解析所有 IP 的地理位置（并行处理）
+    const geoResults = await Promise.all(
+      events.map((event: EventPayload) => {
+        const eventIP = event.ipAddress || headerClientIP;
+        if (eventIP) {
+          return resolveGeoIP(eventIP);
+        }
+        // 没有 IP 地址，返回失败状态
+        return Promise.resolve({ status: 'fail' as const, message: 'no IP', country: null, region: null, city: null, latitude: null, longitude: null });
+      })
+    );
+    
     // 准备批量插入的数据（使用前端发送的当地时间）
-    const eventsToCreate = events.map((event: EventPayload) => {
+    const eventsToCreate = events.map((event: EventPayload, index: number) => {
       // 如果前端提供了 createdAt，使用它；否则使用服务器当前时间
       let createdAt: Date;
       if (event.createdAt) {
@@ -130,6 +123,10 @@ export async function POST(request: NextRequest) {
         createdAt = new Date();
       }
       
+      // 优先使用 payload 中的 ipAddress 字段（来自 UsOnly 传递的客户端 IP）
+      const eventIP = event.ipAddress || headerClientIP;
+      const geoLocation = geoResults[index];
+      
       return {
         projectId,
         eventType: event.eventType || 'pageview',
@@ -139,7 +136,7 @@ export async function POST(request: NextRequest) {
         pageTitle: event.pageTitle || null,
         referrer: event.referrer || null,
         userId: event.userId || null,
-        ipAddress: clientIP || null,
+        ipAddress: eventIP || null,
         country: geoLocation.country || null,
         region: geoLocation.region || null,
         city: geoLocation.city || null,
@@ -161,32 +158,7 @@ export async function POST(request: NextRequest) {
       data: eventsToCreate
     });
     
-    // 更新 IP 限制追踪记录（使用北京时间）
-    const today = formatAsBeijingDate(new Date());
-    await prisma.ipLimitTracker.upsert({
-      where: {
-        projectId_date: {
-          projectId,
-          date: today
-        }
-      },
-      update: {
-        totalRequests: { increment: events.length },
-        successfulResolves: isRateLimited || isFailed ? undefined : { increment: events.length },
-        rateLimitedCount: isRateLimited ? { increment: events.length } : undefined,
-        failedCount: isFailed ? { increment: events.length } : undefined,
-      },
-      create: {
-        projectId,
-        date: today,
-        totalRequests: events.length,
-        successfulResolves: isRateLimited || isFailed ? 0 : events.length,
-        rateLimitedCount: isRateLimited ? events.length : 0,
-        failedCount: isFailed ? events.length : 0,
-      }
-    });
-    
-    log('info', `Events received: ${events.length}`, { projectId, isRateLimited, isFailed });
+    log('info', `Events received: ${events.length}`, { projectId });
     
     return NextResponse.json(
       { success: true, data: { received: events.length } },

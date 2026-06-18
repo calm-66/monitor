@@ -1,0 +1,56 @@
+name: Deploy Check
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-check-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  migrate-and-build:
+    name: Migrate database and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Select database URL
+        run: |
+          echo "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" >> "$GITHUB_ENV"
+          echo "DASHBOARD_PASSWORD=${{ secrets.DASHBOARD_PASSWORD }}" >> "$GITHUB_ENV"
+
+      - name: Run database migrations
+        run: npm run db:deploy
+
+      - name: Build
+        run: npm run build
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Vercel output
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
